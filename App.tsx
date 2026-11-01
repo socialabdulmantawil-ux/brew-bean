@@ -371,6 +371,7 @@ export default function App() {
     quantityLongPressTriggered.current = false;
     quantityPressTimer.current = setTimeout(() => {
       quantityLongPressTriggered.current = true;
+      quantityPressTimer.current = null;
       openQuantityEditor(item);
     }, 500);
   };
@@ -631,7 +632,10 @@ export default function App() {
                   )}
                   <div
                     onPointerDown={(event) => {
-                      if (event.button !== 0) return;
+                      if (
+                        event.button !== 0 ||
+                        (event.target instanceof Element && event.target.closest('button, input, textarea, select'))
+                      ) return;
                       swipeStart.current = { cartItemId: item.cartItemId, x: event.clientX, offset: 0 };
                       event.currentTarget.setPointerCapture(event.pointerId);
                     }}
@@ -782,7 +786,7 @@ export default function App() {
                         onPointerLeave={endQuantityLongPress}
                         onPointerCancel={endQuantityLongPress}
                         onClick={() => handleQuantityButtonClick(item, -1)}
-                        className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        className="min-h-8 min-w-8 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                         aria-label={`Decrease ${item.name} quantity or hold to enter quantity`}
                         title="Hold to enter quantity"
                       >
@@ -795,7 +799,7 @@ export default function App() {
                         onPointerLeave={endQuantityLongPress}
                         onPointerCancel={endQuantityLongPress}
                         onClick={() => handleQuantityButtonClick(item, 1)}
-                        className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        className="min-h-8 min-w-8 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                         aria-label={`Increase ${item.name} quantity or hold to enter quantity`}
                         title="Hold to enter quantity; quantities above 10 can be entered here"
                       >
