@@ -101,8 +101,9 @@ export default function App() {
   ]);
 
   // Order state
-  const [orderType, setOrderType] = useState('Dine-in');
+  const [orderType, setOrderType] = useState('Takeout');
   const [customerType, setCustomerType] = useState('Walk-in Customer');
+  const [dineInTableNumber, setDineInTableNumber] = useState('');
   const [promoCode, setPromoCode] = useState('SAVE10');
   const [isPromoApplied, setIsPromoApplied] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('Card');
@@ -479,9 +480,57 @@ export default function App() {
     (deliveryApp !== 'Other' || otherDeliveryApp.trim().length > 0) &&
     /^\d{4}$/.test(deliveryOrderNumber);
   const deliveryAppName = deliveryApp === 'Other' ? otherDeliveryApp.trim() : deliveryApp;
+  const dineInTableValue = customerType.match(/^TABLE #:\s*(\d+)$/)?.[1];
+  const dineInTableValid = dineInTableValue !== undefined &&
+    Number.isSafeInteger(Number(dineInTableValue)) &&
+    Number(dineInTableValue) > 0;
+
+  const selectOrderType = (type: string) => {
+    if (type === 'Dine-in') {
+      setDineInTableNumber(customerType.match(/^TABLE #:\s*(\d+)$/)?.[1] ?? '');
+      setModalType('DINE_IN_TABLE');
+      return;
+    }
+    if (type === 'Delivery') {
+      if (orderType !== 'Delivery') {
+        setDeliveryApp('');
+        setOtherDeliveryApp('');
+        setDeliveryOrderNumber('');
+      }
+      setModalType('DELIVERY_DETAILS');
+      return;
+    }
+    setOrderType(type);
+    setCustomerType('Walk-in Customer');
+  };
+
+  const confirmDineInTable = () => {
+    const tableNumber = dineInTableNumber.trim();
+    if (!/^\d+$/.test(tableNumber) || Number(tableNumber) < 1) return;
+    setCustomerType(`TABLE #: ${tableNumber}`);
+    setOrderType('Dine-in');
+    setModalType(null);
+  };
+
+  const confirmDeliveryDetails = () => {
+    if (!deliveryDetailsValid) return;
+    setOrderType('Delivery');
+    setCustomerType('Walk-in Customer');
+    setModalType(null);
+    setSaveOrderError('');
+  };
 
   const completeOrder = async () => {
     if (!isDatabaseReady || isSavingOrder) return;
+    if (orderType === 'Dine-in' && !dineInTableValid) {
+      setDineInTableNumber('');
+      setModalType('DINE_IN_TABLE');
+      return;
+    }
+    if (orderType === 'Delivery' && !deliveryDetailsValid) {
+      setModalType('DELIVERY_DETAILS');
+      return;
+    }
     setIsSavingOrder(true);
     setSaveOrderError('');
     try {
@@ -563,17 +612,37 @@ export default function App() {
                 Order #{currentOrderNumber}
               </span>
               <div className="relative flex-1 ml-3">
-                <select 
-                  value={customerType}
-                  onChange={(e) => setCustomerType(e.target.value)}
-                  className="w-full bg-[#1e293b]/80 border border-slate-700/70 text-slate-200 text-xs rounded-lg px-3 py-1.5 appearance-none focus:outline-none focus:border-blue-500 cursor-pointer pr-8 font-medium"
-                >
-                  <option>Walk-in Customer</option>
-                  <option>VIP Member - John Doe</option>
-                  <option>Table #04</option>
-                  <option>Table #12</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+                {orderType === 'Delivery' ? (
+                  <div
+                    className="w-full rounded-lg border border-slate-700/70 bg-[#1e293b]/80 px-3 py-1.5 text-xs font-medium text-slate-200"
+                    aria-label="Delivery app and order number"
+                  >
+                    {deliveryAppName} | {deliveryOrderNumber}
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={customerType}
+                      onChange={(e) => {
+                        const selectedCustomer = e.target.value;
+                        setCustomerType(selectedCustomer);
+                        if (selectedCustomer.startsWith('TABLE #:')) {
+                          setOrderType('Dine-in');
+                        } else if (orderType === 'Dine-in') {
+                          setOrderType('Takeout');
+                        }
+                      }}
+                      className="w-full bg-[#1e293b]/80 border border-slate-700/70 text-slate-200 text-xs rounded-lg px-3 py-1.5 appearance-none focus:outline-none focus:border-blue-500 cursor-pointer pr-8 font-medium"
+                    >
+                      <option>Walk-in Customer</option>
+                      <option>VIP Member - John Doe</option>
+                      {customerType.startsWith('TABLE #:') && (
+                        <option value={customerType}>{customerType}</option>
+                      )}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+                  </>
+                )}
               </div>
             </div>
 
@@ -589,7 +658,7 @@ export default function App() {
                 return (
                   <button
                     key={item.type}
-                    onClick={() => setOrderType(item.type)}
+                    onClick={() => selectOrderType(item.type)}
                     className={`flex items-center justify-center space-x-1.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 ${
                       isActive 
                         ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold' 
@@ -674,6 +743,11 @@ export default function App() {
               )}
             </div>
             )}
+            {orderType === 'Delivery' && saveOrderError && (
+              <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {saveOrderError}
+              </div>
+            )}
             <div className="grid grid-cols-12 gap-2 pt-1">
               <button className="col-span-4 bg-[#182238] hover:bg-slate-700/70 border border-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors">
                 <PauseCircle className="w-4 h-4 text-slate-400" />
@@ -689,17 +763,31 @@ export default function App() {
               <button
                 onClick={() => {
                   if (cart.length > 0) {
-                    setModalType(orderType === 'Delivery' ? 'DELIVERY_DETAILS' : 'PAYMENT');
+                    if (orderType === 'Delivery') {
+                      void completeOrder();
+                    } else {
+                      setModalType('PAYMENT');
+                    }
                   }
                 }}
-                disabled={cart.length === 0}
+                disabled={
+                  cart.length === 0 ||
+                  isSavingOrder ||
+                  (orderType === 'Dine-in' && !dineInTableValid)
+                }
                 className={`col-span-5 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all shadow-lg ${
                   cart.length > 0 
                     ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/30' 
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
                 }`}
               >
-                <span>Checkout</span>
+                <span>
+                  {isSavingOrder && orderType === 'Delivery'
+                    ? 'Closing Online Order...'
+                    : orderType === 'Delivery'
+                      ? 'Close Online Order'
+                      : 'Checkout'}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -722,6 +810,65 @@ export default function App() {
       </div>
 
       {/* MODAL DIALOGS FOR ACTION MENU ITEMS */}
+
+      {/* DINE-IN TABLE MODAL */}
+      {modalType === 'DINE_IN_TABLE' && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              confirmDineInTable();
+            }}
+            className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-700/80 bg-[#131b2e] p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-white">Dine-in Table</h3>
+                <p className="text-xs text-slate-400">Enter a table number before starting the dine-in order.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalType(null)}
+                className="text-slate-400 hover:text-white"
+                aria-label="Close table number dialog"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-slate-300">Table number</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                autoFocus
+                value={dineInTableNumber}
+                onChange={(event) => setDineInTableNumber(event.target.value.replace(/\D/g, ''))}
+                placeholder="Enter table number"
+                className="w-full rounded-xl border border-slate-700/80 bg-[#1e293b]/70 p-3 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                aria-label="Dine-in table number"
+              />
+            </label>
+            <div className="flex gap-2 border-t border-slate-800 pt-3">
+              <button
+                type="button"
+                onClick={() => setModalType(null)}
+                className="flex-1 rounded-xl bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!/^\d+$/.test(dineInTableNumber) || Number(dineInTableNumber) < 1}
+                className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-colors enabled:hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
+              >
+                Start Dine-in
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* DELIVERY ORDER DETAILS MODAL */}
       {modalType === 'DELIVERY_DETAILS' && (
@@ -806,11 +953,11 @@ export default function App() {
                 Cancel
               </button>
               <button
-                onClick={() => void completeOrder()}
+                onClick={confirmDeliveryDetails}
                 disabled={!deliveryDetailsValid || isSavingOrder}
                 className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-colors enabled:hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
               >
-                {isSavingOrder ? 'Saving order...' : 'Confirm Delivery Order'}
+                Start Online Order
               </button>
             </div>
             {saveOrderError && (
@@ -1475,6 +1622,9 @@ export default function App() {
                   setDeliveryApp('');
                   setOtherDeliveryApp('');
                   setDeliveryOrderNumber('');
+                  setOrderType('Takeout');
+                  setCustomerType('Walk-in Customer');
+                  setDineInTableNumber('');
                   setModalType(null);
                 }}
                 className="w-full rounded-xl bg-slate-800 py-2.5 text-xs font-bold text-slate-200 transition-colors hover:bg-slate-700"

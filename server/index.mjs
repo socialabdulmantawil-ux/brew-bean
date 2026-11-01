@@ -64,6 +64,13 @@ function createOrder(payload) {
     throw Object.assign(new Error('Order type is not supported.'), { status: 400 });
   }
   const customerType = requireText(payload.customerType, 'Customer type');
+  const dineInTableNumber = customerType.match(/^TABLE #:\s*(\d+)$/)?.[1];
+  if (
+    orderType === 'Dine-in' &&
+    (!dineInTableNumber || !Number.isSafeInteger(Number(dineInTableNumber)) || Number(dineInTableNumber) < 1)
+  ) {
+    throw Object.assign(new Error('A valid dine-in table number is required.'), { status: 400 });
+  }
   const isDelivery = orderType === 'Delivery';
   const payment = payload.payment;
   if (!isDelivery && (!payment || !['Card', 'Cash', 'Wallet'].includes(payment.method))) {

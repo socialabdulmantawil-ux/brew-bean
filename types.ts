@@ -42,6 +42,7 @@ export type ModalType =
   | 'ADDONS'
   | 'NOTES'
   | 'QUANTITY'
+  | 'DINE_IN_TABLE'
   | 'DELIVERY_DETAILS'
   | 'PAYMENT'
   | 'CASH_TENDER'
