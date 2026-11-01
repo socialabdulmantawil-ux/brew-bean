@@ -7,9 +7,9 @@ import {
   SlidersHorizontal,
   Sparkles,
   Utensils,
-  X
-} from 'lucide-react';
-import type { Product } from '../types';
+  X,
+} from "lucide-react";
+import type { Product } from "../types";
 
 interface ProductCatalogProps {
   products: Product[];
@@ -22,11 +22,11 @@ interface ProductCatalogProps {
 }
 
 const categories = [
-  { id: 'All Items', icon: Sparkles },
-  { id: 'Coffee', icon: Coffee },
-  { id: 'Drinks', icon: CupSoda },
-  { id: 'Bakery', icon: Cookie },
-  { id: 'Meals', icon: Utensils }
+  { id: "All Items", icon: Sparkles },
+  { id: "Coffee", icon: Coffee },
+  { id: "Drinks", icon: CupSoda },
+  { id: "Bakery", icon: Cookie },
+  { id: "Meals", icon: Utensils },
 ];
 
 export default function ProductCatalog({
@@ -36,7 +36,7 @@ export default function ProductCatalog({
   searchQuery,
   onSearchChange,
   onAddToCart,
-  formatCurrency
+  formatCurrency,
 }: ProductCatalogProps) {
   return (
     <div className="flex-1 flex flex-col min-h-[70vh] md:h-full bg-[#0b101d] overflow-hidden p-3 sm:p-4 space-y-4">
@@ -52,7 +52,7 @@ export default function ProductCatalog({
           />
           {searchQuery && (
             <button
-              onClick={() => onSearchChange('')}
+              onClick={() => onSearchChange("")}
               className="absolute right-3 top-3 text-slate-400 hover:text-white"
               aria-label="Clear product search"
             >
@@ -75,8 +75,8 @@ export default function ProductCatalog({
               onClick={() => onCategoryChange(id)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'bg-[#131b2e] text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800/80'
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                  : "bg-[#131b2e] text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800/80"
               }`}
             >
               <CategoryIcon className="w-3.5 h-3.5" />
@@ -87,21 +87,27 @@ export default function ProductCatalog({
       </div>
 
       <div className="flex items-center justify-between shrink-0">
-        <h2 className="text-sm font-bold text-slate-200 tracking-wide">{selectedCategory}</h2>
-        <span className="text-xs text-slate-500 font-medium">{products.length} products available</span>
+        <h2 className="text-sm font-bold text-slate-200 tracking-wide">
+          {selectedCategory}
+        </h2>
+        <span className="text-xs text-slate-500 font-medium">
+          {products.length} products available
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[12px] pb-[24px]">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pb-6">
           {products.map((product) => (
             <button
               type="button"
               key={product.id}
               onClick={() => onAddToCart(product)}
-              className="bg-[#131b2e] border border-slate-800/80 hover:border-blue-500/50 rounded-2xl p-[4px] flex flex-col gap-[10px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-900/10 group relative overflow-hidden text-left"
+              className="bg-[#131b2e] border border-slate-800/80 hover:border-blue-500/50 rounded-2xl p-1 flex flex-col gap-2.5 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-900/10 group relative overflow-hidden text-left"
             >
               {product.tag && (
-                <span className={`absolute top-[8px] right-[8px] ${product.tagColor || 'bg-blue-600'} text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full z-10 shadow-md`}>
+                <span
+                  className={`absolute top-2 right-2 ${product.tagColor || "bg-blue-600"} text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full z-10 shadow-md`}
+                >
                   {product.tag}
                 </span>
               )}
@@ -114,13 +120,15 @@ export default function ProductCatalog({
                 />
               </div>
 
-              <div className="space-y-[4px]">
+              <div className="space-y-1">
                 <h3 className="text-xs font-bold text-slate-100 group-hover:text-blue-400 transition-colors truncate">
                   {product.name}
                 </h3>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-extrabold text-blue-400">{formatCurrency(product.price)}</span>
+                  <span className="text-sm font-extrabold text-blue-400">
+                    {formatCurrency(product.price)}
+                  </span>
                   <span className="text-[10px] text-slate-400 flex items-center space-x-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     <span>{product.stock} in stock</span>
