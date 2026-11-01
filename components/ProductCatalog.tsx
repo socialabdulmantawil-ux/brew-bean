@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import {
   Check,
   Cookie,
@@ -13,12 +14,14 @@ import type { Product } from "../types";
 
 interface ProductCatalogProps {
   products: Product[];
+  availableStockByProduct: Record<string, number>;
   categories: string[];
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAddToCart: (product: Product) => void;
+  onSetQuantity: (product: Product) => void;
   formatCurrency: (amount: number) => string;
 }
 
@@ -31,14 +34,30 @@ const categoryIcons = {
 
 export default function ProductCatalog({
   products,
+  availableStockByProduct,
   categories,
   selectedCategory,
   onCategoryChange,
   searchQuery,
   onSearchChange,
   onAddToCart,
+  onSetQuantity,
   formatCurrency,
 }: ProductCatalogProps) {
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggered = useRef(false);
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    pointerStart.current = null;
+  };
+
+  useEffect(() => clearLongPressTimer, []);
+
   return (
     <div className="flex-1 flex flex-col min-h-[70vh] md:h-full bg-[#0b101d] overflow-hidden p-3 sm:p-4 space-y-4">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
@@ -99,12 +118,58 @@ export default function ProductCatalog({
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pb-6">
-          {products.map((product) => (
+          {products.map((product) => {
+            const availableStock = availableStockByProduct[product.id] ?? product.stock;
+            const isOutOfStock = availableStock === 0;
+            return (
             <button
               type="button"
               key={product.id}
-              onClick={() => onAddToCart(product)}
-              className="bg-[#131b2e] border border-slate-800/80 hover:border-blue-500/50 rounded-2xl p-1 flex flex-col gap-2.5 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-900/10 group relative overflow-hidden text-left"
+              disabled={isOutOfStock}
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                longPressTriggered.current = false;
+                clearLongPressTimer();
+                pointerStart.current = { x: event.clientX, y: event.clientY };
+                event.currentTarget.setPointerCapture(event.pointerId);
+                longPressTimer.current = setTimeout(() => {
+                  longPressTriggered.current = true;
+                  longPressTimer.current = null;
+                  onSetQuantity(product);
+                }, 500);
+              }}
+              onPointerUp={(event) => {
+                clearLongPressTimer();
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                }
+              }}
+              onPointerLeave={clearLongPressTimer}
+              onPointerCancel={clearLongPressTimer}
+              onLostPointerCapture={clearLongPressTimer}
+              onPointerMove={(event) => {
+                const start = pointerStart.current;
+                if (
+                  start &&
+                  (Math.abs(event.clientX - start.x) > 10 || Math.abs(event.clientY - start.y) > 10)
+                ) {
+                  clearLongPressTimer();
+                }
+              }}
+              onContextMenu={(event) => event.preventDefault()}
+              onClick={() => {
+                if (longPressTriggered.current) {
+                  longPressTriggered.current = false;
+                  return;
+                }
+                onAddToCart(product);
+              }}
+              className={`touch-manipulation select-none bg-[#131b2e] border border-slate-800/80 rounded-2xl p-1 flex flex-col gap-2.5 transition-all group relative overflow-hidden text-left ${
+                isOutOfStock
+                  ? "cursor-not-allowed opacity-60"
+                  : "cursor-pointer hover:border-blue-500/50 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-900/10"
+              }`}
+              aria-label={`${product.name}. ${availableStock} in stock. Tap to add to cart, or press and hold to set quantity.`}
             >
               {product.tag && (
                 <span
@@ -132,13 +197,14 @@ export default function ProductCatalog({
                     {formatCurrency(product.price)}
                   </span>
                   <span className="text-[10px] text-slate-400 flex items-center space-x-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span>{product.stock} in stock</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOutOfStock ? "bg-red-500" : availableStock <= 5 ? "bg-amber-500" : "bg-emerald-500"}`}></span>
+                    <span>{isOutOfStock ? "Out of stock" : `${availableStock} in stock`}</span>
                   </span>
                 </div>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 

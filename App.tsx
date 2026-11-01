@@ -122,6 +122,8 @@ export default function App() {
   // Modals state
   const [modalType, setModalType] = useState<ModalType>(null);
   const [activeCartItem, setActiveCartItem] = useState<CartItem | null>(null);
+  const [quantityProduct, setQuantityProduct] = useState<Product | null>(null);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [quantityInput, setQuantityInput] = useState('');
   const quantityPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quantityLongPressTriggered = useRef(false);
@@ -180,23 +182,77 @@ export default function App() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
+  const reservedQuantities = completedOrderNumber === null
+    ? cart.reduce<Record<string, number>>((quantities, item) => {
+        quantities[item.productId] = (quantities[item.productId] || 0) + item.quantity;
+        return quantities;
+      }, {})
+    : {};
+  const availableStockByProduct = Object.fromEntries(
+    products.map((product) => [
+      product.id,
+      Math.max(0, product.stock - (reservedQuantities[product.id] || 0)),
+    ]),
+  );
+  const getAvailableStock = (productId: string) => availableStockByProduct[productId] ?? 0;
+
   // Cart operations
   const handleQuantityChange = (cartItemId: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.cartItemId === cartItemId) {
-        const newQty = delta > 0
-          ? Math.min(item.quantity + delta, 10)
-          : item.quantity + delta;
-        return newQty > 0 ? { ...item, quantity: newQty } : item;
-      }
-      return item;
+    setCart(prev => prev.flatMap(item => {
+      if (item.cartItemId !== cartItemId) return [item];
+      const productStock = products.find((product) => product.id === item.productId)?.stock ?? item.quantity;
+      const otherItemsQuantity = prev.reduce(
+        (total, cartItem) => cartItem.productId === item.productId && cartItem.cartItemId !== item.cartItemId
+          ? total + cartItem.quantity
+          : total,
+        0,
+      );
+      const maxItemQuantity = Math.max(0, productStock - otherItemsQuantity);
+      const newQty = delta > 0
+        ? Math.min(item.quantity + delta, 10, maxItemQuantity)
+        : item.quantity + delta;
+      return newQty > 0 ? [{ ...item, quantity: newQty }] : [];
     }));
   };
 
   const openQuantityEditor = (item: CartItem) => {
+    setQuantityProduct(null);
     setActiveCartItem(item);
     setQuantityInput(String(item.quantity));
     setModalType('QUANTITY');
+  };
+
+  const openProductQuantityEditor = (product: Product) => {
+    setActiveCartItem(null);
+    setQuantityProduct(product);
+    setIsAddingProduct(false);
+    setQuantityInput('1');
+    setModalType('QUANTITY');
+  };
+
+  const openProductSizeSelector = (product: Product) => {
+    const defaultSize = product.defaultOptions.size;
+    const defaultSizeOption = sizeOptions.find((option) => option.name === defaultSize);
+    const defaultSizeAdjustment = defaultSizeOption?.adjustment ?? 0;
+    const defaultAddOns = product.defaultOptions.addOns
+      .map((addOnId) => addOnOptions.find((addOn) => addOn.id === addOnId))
+      .filter((addOn): addOn is AddOn => addOn !== undefined);
+    setQuantityProduct(null);
+    setActiveCartItem({
+      cartItemId: `new-${product.id}-${Date.now()}`,
+      productId: product.id,
+      name: product.name,
+      basePrice: product.price,
+      unitPrice: calculateUnitPrice(product.price, defaultSizeAdjustment, defaultAddOns),
+      quantity: 1,
+      size: defaultSizeOption?.name ?? '',
+      sizeAdjustment: defaultSizeAdjustment,
+      selectedAddOns: defaultAddOns,
+      notes: '',
+      image: product.image,
+    });
+    setIsAddingProduct(true);
+    setModalType('SIZE');
   };
 
   const startQuantityLongPress = (item: CartItem) => {
@@ -229,12 +285,85 @@ export default function App() {
 
   const saveQuantity = () => {
     const quantity = Number(quantityInput);
-    if (!activeCartItem || !Number.isSafeInteger(quantity) || quantity < 1) return;
-    setCart(prev => prev.map(item =>
-      item.cartItemId === activeCartItem.cartItemId ? { ...item, quantity } : item
-    ));
+    if (!Number.isSafeInteger(quantity) || quantity < 1) return;
+    if (quantityProduct) {
+      if (!addProductQuantityToCart(quantityProduct, quantity)) return;
+    } else if (activeCartItem) {
+      const availableForItem = getAvailableStock(activeCartItem.productId) + activeCartItem.quantity;
+      if (quantity > availableForItem) return;
+      setCart(prev => prev.map(item =>
+        item.cartItemId === activeCartItem.cartItemId ? { ...item, quantity } : item
+      ));
+    } else {
+      return;
+    }
     setModalType(null);
     setActiveCartItem(null);
+    setQuantityProduct(null);
+  };
+
+  const addProductQuantityToCart = (product: Product, quantity: number) => {
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > getAvailableStock(product.id)) {
+      return false;
+    }
+
+    const defaultSize = product.defaultOptions.size;
+    const defaultSizeAdjustment = sizeOptions.find((option) => option.name === defaultSize)?.adjustment ?? 0;
+    const defaultAddOns = product.defaultOptions.addOns
+      .map((addOnId) => addOnOptions.find((addOn) => addOn.id === addOnId))
+      .filter((addOn): addOn is AddOn => addOn !== undefined);
+    const defaultItem: CartItem = {
+      cartItemId: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4),
+      productId: product.id,
+      name: product.name,
+      basePrice: product.price,
+      unitPrice: calculateUnitPrice(product.price, defaultSizeAdjustment, defaultAddOns),
+      quantity,
+      size: defaultSize,
+      sizeAdjustment: defaultSizeAdjustment,
+      selectedAddOns: defaultAddOns,
+      notes: '',
+      image: product.image,
+    };
+
+    return addCartItemVariant(defaultItem, quantity);
+  };
+
+  const addCartItemVariant = (cartItem: CartItem, quantity: number) => {
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > getAvailableStock(cartItem.productId)) {
+      return false;
+    }
+
+    const defaultAddOnIds = cartItem.selectedAddOns.map((addOn) => addOn.id).sort();
+    const matchingItems = cart.filter((item) => {
+      if (
+        item.productId !== cartItem.productId ||
+        item.size !== cartItem.size ||
+        item.sizeAdjustment !== cartItem.sizeAdjustment ||
+        item.notes.trim() !== cartItem.notes.trim()
+      ) {
+        return false;
+      }
+      const itemAddOnIds = item.selectedAddOns.map((addOn) => addOn.id).sort();
+      return itemAddOnIds.length === defaultAddOnIds.length &&
+        itemAddOnIds.every((addOnId, index) => addOnId === defaultAddOnIds[index]);
+    });
+    if (matchingItems.length === 0) {
+      setCart((prev) => [{ ...cartItem, quantity }, ...prev]);
+      return true;
+    }
+
+    const primaryItemId = matchingItems[0].cartItemId;
+    const combinedQuantity = matchingItems.reduce((total, item) => total + item.quantity, quantity);
+    setCart((prev) => prev.flatMap((item) => {
+      if (!matchingItems.some((matchingItem) => matchingItem.cartItemId === item.cartItemId)) {
+        return [item];
+      }
+      return item.cartItemId === primaryItemId
+        ? [{ ...item, quantity: combinedQuantity }]
+        : [];
+    }));
+    return true;
   };
 
   const handleRemoveItem = (cartItemId: string) => {
@@ -243,26 +372,11 @@ export default function App() {
   };
 
   const handleAddToCart = (product: Product) => {
-    // Check if item exists in cart
-    const existingIndex = cart.findIndex(c => c.productId === product.id && c.size === 'Regular' && c.selectedAddOns.length === 0);
-    if (existingIndex > -1) {
-      handleQuantityChange(cart[existingIndex].cartItemId, 1);
-    } else {
-      const newItem = {
-        cartItemId: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4),
-        productId: product.id,
-        name: product.name,
-        basePrice: product.price,
-        unitPrice: product.price,
-        quantity: 1,
-        size: 'Regular',
-        sizeAdjustment: 0,
-        selectedAddOns: [],
-        notes: '',
-        image: product.image
-      };
-      setCart(prev => [newItem, ...prev]);
+    if (product.id === 'p1') {
+      openProductSizeSelector(product);
+      return;
     }
+    addProductQuantityToCart(product, 1);
   };
 
   // Recalculate price helper
@@ -279,19 +393,30 @@ export default function App() {
   };
 
   const saveItemChanges = (updatedItem: CartItem) => {
+    if (isAddingProduct && !sizeOptions.some((option) => option.name === updatedItem.size)) return;
     const newUnitPrice = calculateUnitPrice(
       updatedItem.basePrice,
       updatedItem.sizeAdjustment || 0,
       updatedItem.selectedAddOns || []
     );
     
+    const pricedItem = { ...updatedItem, unitPrice: newUnitPrice };
+    if (isAddingProduct) {
+      if (!addCartItemVariant(pricedItem, 1)) return;
+      setIsAddingProduct(false);
+      setModalType(null);
+      setActiveCartItem(null);
+      return;
+    }
+
     setCart(prev => prev.map(item => 
       item.cartItemId === updatedItem.cartItemId 
-        ? { ...updatedItem, unitPrice: newUnitPrice } 
+        ? pricedItem
         : item
     ));
     setModalType(null);
     setActiveCartItem(null);
+    setIsAddingProduct(false);
   };
 
   // Financial Calculations
@@ -561,12 +686,14 @@ export default function App() {
 
         <ProductCatalog
           products={filteredProducts}
+          availableStockByProduct={availableStockByProduct}
           categories={categories}
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onAddToCart={handleAddToCart}
+          onSetQuantity={openProductQuantityEditor}
           formatCurrency={formatCurrency}
         />
 
@@ -674,7 +801,7 @@ export default function App() {
       )}
 
       {/* QUICK QUANTITY MODAL */}
-      {modalType === 'QUANTITY' && activeCartItem && (
+      {modalType === 'QUANTITY' && (activeCartItem || quantityProduct) && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form
             onSubmit={(event) => {
@@ -686,13 +813,14 @@ export default function App() {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-white">Set Quantity</h3>
-                <p className="text-xs text-slate-400">{activeCartItem.name}</p>
+                <p className="text-xs text-slate-400">{quantityProduct?.name ?? activeCartItem?.name}</p>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   setModalType(null);
                   setActiveCartItem(null);
+                  setQuantityProduct(null);
                 }}
                 className="text-slate-400 hover:text-white"
                 aria-label="Close quantity editor"
@@ -703,10 +831,16 @@ export default function App() {
 
             <label className="block space-y-1.5">
               <span className="text-xs font-medium text-slate-300">Enter quantity</span>
+              {quantityProduct && (
+                <span className="block text-xs text-slate-400">
+                  {getAvailableStock(quantityProduct.id)} available in stock
+                </span>
+              )}
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                max={quantityProduct ? getAvailableStock(quantityProduct.id) : undefined}
                 autoFocus
                 value={quantityInput}
                 onChange={(event) => setQuantityInput(event.target.value.replace(/\D/g, ''))}
@@ -743,6 +877,7 @@ export default function App() {
                 onClick={() => {
                   setModalType(null);
                   setActiveCartItem(null);
+                  setQuantityProduct(null);
                 }}
                 className="flex-1 rounded-xl bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700"
               >
@@ -750,7 +885,13 @@ export default function App() {
               </button>
               <button
                 type="submit"
-                disabled={!Number.isSafeInteger(Number(quantityInput)) || Number(quantityInput) < 1}
+                disabled={
+                  !Number.isSafeInteger(Number(quantityInput)) ||
+                  Number(quantityInput) < 1 ||
+                  (quantityProduct !== null && Number(quantityInput) > getAvailableStock(quantityProduct.id)) ||
+                  (activeCartItem !== null &&
+                    Number(quantityInput) > getAvailableStock(activeCartItem.productId) + activeCartItem.quantity)
+                }
                 className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-colors enabled:hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
               >
                 Set Quantity
@@ -769,7 +910,14 @@ export default function App() {
                 <h3 className="text-sm font-bold text-white">Change Item Size</h3>
                 <p className="text-xs text-slate-400">{activeCartItem.name}</p>
               </div>
-              <button onClick={() => setModalType(null)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => {
+                  setModalType(null);
+                  setActiveCartItem(null);
+                  setIsAddingProduct(false);
+                }}
+                className="text-slate-400 hover:text-white"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -810,16 +958,21 @@ export default function App() {
 
             <div className="flex space-x-2 pt-2 border-t border-slate-800">
               <button 
-                onClick={() => setModalType(null)}
+                onClick={() => {
+                  setModalType(null);
+                  setActiveCartItem(null);
+                  setIsAddingProduct(false);
+                }}
                 className="flex-1 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
               >
                 Cancel
               </button>
               <button 
                 onClick={() => saveItemChanges(activeCartItem)}
-                className="flex-1 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-600/30"
+                disabled={isAddingProduct && !sizeOptions.some((option) => option.name === activeCartItem.size)}
+                className="flex-1 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-600/30 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
               >
-                Save Changes
+                {isAddingProduct ? 'Add to Order' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -1293,6 +1446,7 @@ export default function App() {
               <button
                 onClick={() => {
                   setCart([]);
+                  setCompletedOrderNumber(null);
                   setCardLastFour('');
                   setCashReceived('');
                   setWalletReference('');
