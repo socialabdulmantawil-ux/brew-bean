@@ -79,7 +79,13 @@ function createOrder(payload) {
       .map((size) => [size.name, size.adjustment_cents]),
   );
   const addOnsById = new Map(
-    db.prepare('SELECT id, name, price_cents FROM add_ons WHERE is_active = 1').all()
+    db.prepare(`
+      SELECT add_ons.id, add_ons.name, add_ons.price_cents, categories.name AS category
+      FROM add_ons
+      JOIN category_add_ons ON category_add_ons.add_on_id = add_ons.id
+      JOIN categories ON categories.id = category_add_ons.category_id
+      WHERE add_ons.is_active = 1
+    `).all()
       .map((addOn) => [addOn.id, addOn]),
   );
 
@@ -111,6 +117,9 @@ function createOrder(payload) {
       const addOn = addOnsById.get(addOnId);
       if (!addOn) {
         throw Object.assign(new Error(`An add-on for ${product.name} is unavailable.`), { status: 400 });
+      }
+      if (addOn.category !== product.category) {
+        throw Object.assign(new Error(`${addOn.name} is not available for ${product.category}.`), { status: 400 });
       }
       return addOn;
     });

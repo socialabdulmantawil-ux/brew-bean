@@ -14,6 +14,7 @@ export interface AddOn {
   id: string;
   name: string;
   price: number;
+  category?: string;
 }
 
 export interface SizeOption {

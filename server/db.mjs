@@ -72,6 +72,30 @@ if (productCount === 0) {
   }
 }
 
+db.exec('BEGIN IMMEDIATE');
+try {
+  const insertCategory = db.prepare('INSERT OR IGNORE INTO categories (id, name) VALUES (?, ?)');
+  for (const name of seedCategories) {
+    insertCategory.run(name.toLowerCase(), name);
+  }
+  const insertAddOn = db.prepare(
+    'INSERT OR IGNORE INTO add_ons (id, name, price_cents) VALUES (?, ?, ?)',
+  );
+  const insertCategoryAddOn = db.prepare(
+    'INSERT OR IGNORE INTO category_add_ons (category_id, add_on_id) VALUES (?, ?)',
+  );
+  for (const addOn of seedAddOns) {
+    insertAddOn.run(addOn.id, addOn.name, Math.round(addOn.price * 100));
+    for (const category of addOn.categories) {
+      insertCategoryAddOn.run(category.toLowerCase(), addOn.id);
+    }
+  }
+  db.exec('COMMIT');
+} catch (error) {
+  db.exec('ROLLBACK');
+  throw error;
+}
+
 export function getProducts() {
   const defaultAddOns = db.prepare(`
     SELECT product_id, add_on_id
@@ -132,14 +156,17 @@ export function getBootstrap() {
       adjustment: size.adjustment_cents / 100,
     })),
     addOns: db.prepare(`
-      SELECT id, name, price_cents
+      SELECT add_ons.id, add_ons.name, add_ons.price_cents, categories.name AS category
       FROM add_ons
-      WHERE is_active = 1
-      ORDER BY rowid
+      JOIN category_add_ons ON category_add_ons.add_on_id = add_ons.id
+      JOIN categories ON categories.id = category_add_ons.category_id
+      WHERE add_ons.is_active = 1
+      ORDER BY add_ons.rowid
     `).all().map((addOn) => ({
       id: addOn.id,
       name: addOn.name,
       price: addOn.price_cents / 100,
+      category: addOn.category,
     })),
     settings: {
       taxRatePercent: Number(settings.tax_rate_percent),

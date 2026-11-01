@@ -166,7 +166,7 @@ export default function ProductCatalog({
               }}
               className={`touch-manipulation select-none bg-[#131b2e] border border-slate-800/80 rounded-2xl p-1 flex flex-col gap-2.5 transition-all group relative overflow-hidden text-left ${
                 isOutOfStock
-                  ? "cursor-not-allowed opacity-60"
+                  ? "cursor-not-allowed opacity-60 grayscale"
                   : "cursor-pointer hover:border-blue-500/50 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-900/10"
               }`}
               aria-label={`${product.name}. ${availableStock} in stock. Tap to add to cart, or press and hold to set quantity.`}

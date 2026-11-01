@@ -23,6 +23,7 @@ import type { AddOn, CartItem, ModalType, Product, SizeOption, SwipeStart, Swipi
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
+const sizeSelectorCategories = new Set(['Coffee', 'Drinks']);
 
 interface PosBootstrap {
   categories: string[];
@@ -195,6 +196,19 @@ export default function App() {
     ]),
   );
   const getAvailableStock = (productId: string) => availableStockByProduct[productId] ?? 0;
+  const quantityStockLimit = quantityProduct
+    ? getAvailableStock(quantityProduct.id)
+    : activeCartItem
+      ? getAvailableStock(activeCartItem.productId) + activeCartItem.quantity
+      : 0;
+  const quantityExceedsStock =
+    quantityInput !== '' && Number(quantityInput) > quantityStockLimit;
+  const getProductCategory = (productId: string) =>
+    products.find((product) => product.id === productId)?.category;
+  const canChangeSize = (productId: string) =>
+    sizeSelectorCategories.has(getProductCategory(productId) ?? '');
+  const canCustomizeModifiers = (productId: string) =>
+    addOnOptions.some((addOn) => addOn.category === getProductCategory(productId));
 
   // Cart operations
   const handleQuantityChange = (cartItemId: string, delta: number) => {
@@ -236,7 +250,7 @@ export default function App() {
     const defaultSizeAdjustment = defaultSizeOption?.adjustment ?? 0;
     const defaultAddOns = product.defaultOptions.addOns
       .map((addOnId) => addOnOptions.find((addOn) => addOn.id === addOnId))
-      .filter((addOn): addOn is AddOn => addOn !== undefined);
+      .filter((addOn): addOn is AddOn => addOn?.category === product.category);
     setQuantityProduct(null);
     setActiveCartItem({
       cartItemId: `new-${product.id}-${Date.now()}`,
@@ -372,7 +386,7 @@ export default function App() {
   };
 
   const handleAddToCart = (product: Product) => {
-    if (product.id === 'p1') {
+    if (sizeSelectorCategories.has(product.category)) {
       openProductSizeSelector(product);
       return;
     }
@@ -387,6 +401,12 @@ export default function App() {
 
   // Modals actions
   const openModal = (type: ModalType, item: CartItem | null) => {
+    if (
+      (type === 'SIZE' && (!item || !canChangeSize(item.productId))) ||
+      (type === 'ADDONS' && (!item || !canCustomizeModifiers(item.productId)))
+    ) {
+      return;
+    }
     setActiveCartItem(item ? { ...item, selectedAddOns: [...item.selectedAddOns] } : null);
     setModalType(type);
     setActiveMenuId(null);
@@ -587,6 +607,8 @@ export default function App() {
           <CartItemList
             cart={cart}
             products={products}
+            canChangeSize={(item) => canChangeSize(item.productId)}
+            canCustomizeModifiers={(item) => canCustomizeModifiers(item.productId)}
             activeMenuId={activeMenuId}
             onActiveMenuChange={setActiveMenuId}
             swipeStart={swipeStart}
@@ -831,11 +853,9 @@ export default function App() {
 
             <label className="block space-y-1.5">
               <span className="text-xs font-medium text-slate-300">Enter quantity</span>
-              {quantityProduct && (
-                <span className="block text-xs text-slate-400">
-                  {getAvailableStock(quantityProduct.id)} available in stock
-                </span>
-              )}
+              <span className={`block text-xs ${quantityExceedsStock ? 'text-red-400' : 'text-green-400'}`}>
+                ({quantityStockLimit} available in stock)
+              </span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -902,7 +922,8 @@ export default function App() {
       )}
 
       {/* CHANGE SIZE MODAL */}
-      {modalType === 'SIZE' && activeCartItem && (
+      {modalType === 'SIZE' && activeCartItem &&
+        canChangeSize(activeCartItem.productId) && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#131b2e] border border-slate-700/80 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -980,7 +1001,8 @@ export default function App() {
       )}
 
       {/* ADD ONS MODAL */}
-      {modalType === 'ADDONS' && activeCartItem && (
+      {modalType === 'ADDONS' && activeCartItem &&
+        canCustomizeModifiers(activeCartItem.productId) && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#131b2e] border border-slate-700/80 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -994,7 +1016,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto hide-scrollbar">
-              {addOnOptions.map((addon) => {
+              {addOnOptions.filter((addon) => addon.category === getProductCategory(activeCartItem.productId)).map((addon) => {
                 const isChecked = activeCartItem.selectedAddOns?.some(a => a.id === addon.id);
                 return (
                   <button

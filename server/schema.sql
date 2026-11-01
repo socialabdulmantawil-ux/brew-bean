@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS add_ons (
   is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))
 );
 
+CREATE TABLE IF NOT EXISTS category_add_ons (
+  category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  add_on_id TEXT NOT NULL REFERENCES add_ons(id) ON DELETE CASCADE,
+  PRIMARY KEY (category_id, add_on_id)
+);
+
 CREATE TABLE IF NOT EXISTS product_default_add_ons (
   product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   add_on_id TEXT NOT NULL REFERENCES add_ons(id),

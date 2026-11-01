@@ -12,6 +12,7 @@ Run `npm run dev` to start the POS and its SQLite API together. To run the API s
 | `products` | Product names, categories, cent-denominated prices, stock, tags, images, and default sizes. |
 | `size_options` | Available sizes and their cent-denominated price adjustments. |
 | `add_ons` | Available modifiers and their cent-denominated prices. |
+| `category_add_ons` | Categories allowed to use each modifier. |
 | `product_default_add_ons` | Default product-to-modifier relationships. |
 | `settings` | Tax rate, promotional discount rate, and currency. |
 | `order_number_sequence` | The next receipt/order number. |
@@ -22,6 +23,8 @@ Run `npm run dev` to start the POS and its SQLite API together. To run the API s
 | `delivery_orders` | Delivery provider and external order number. |
 
 Prices and totals are stored as integer cents. Order creation, payment/delivery records, stock decrements, and order numbering are written in one transaction. Delivery orders are recorded as pending payment; other checkout methods are recorded as paid.
+
+Coffee and Drinks products open the size selector when added from the catalog. Add-ons are seeded by category: the original espresso, syrup, milk, ice, and sugar options are Coffee-only, with separate drink, bakery, and meal options. The API validates category compatibility when saving orders.
 
 ## API
 

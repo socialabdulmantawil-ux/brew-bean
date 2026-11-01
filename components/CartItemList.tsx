@@ -14,6 +14,8 @@ import EmptyCartSlideshow from './EmptyCartSlideshow';
 interface CartItemListProps {
   cart: CartItem[];
   products: Product[];
+  canChangeSize: (item: CartItem) => boolean;
+  canCustomizeModifiers: (item: CartItem) => boolean;
   activeMenuId: string | null;
   onActiveMenuChange: (cartItemId: string | null) => void;
   swipeStart: MutableRefObject<SwipeStart | null>;
@@ -30,6 +32,8 @@ interface CartItemListProps {
 export default function CartItemList({
   cart,
   products,
+  canChangeSize,
+  canCustomizeModifiers,
   activeMenuId,
   onActiveMenuChange,
   swipeStart,
@@ -163,20 +167,24 @@ export default function CartItemList({
 
                     {activeMenuId === item.cartItemId && (
                       <div className="absolute right-0 top-7 w-44 bg-[#1a233a] border border-slate-700/80 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
-                        <button
-                          onClick={() => onOpenModal('SIZE', item)}
-                          className="w-full text-left px-3 py-1.5 text-[11px] text-slate-200 hover:bg-blue-600/20 hover:text-blue-300 flex items-center space-x-2 transition-colors"
-                        >
-                          <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Change Size</span>
-                        </button>
-                        <button
-                          onClick={() => onOpenModal('ADDONS', item)}
-                          className="w-full text-left px-3 py-1.5 text-[11px] text-slate-200 hover:bg-blue-600/20 hover:text-blue-300 flex items-center space-x-2 transition-colors"
-                        >
-                          <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Add Ons</span>
-                        </button>
+                        {canChangeSize(item) && (
+                          <button
+                            onClick={() => onOpenModal('SIZE', item)}
+                            className="w-full text-left px-3 py-1.5 text-[11px] text-slate-200 hover:bg-blue-600/20 hover:text-blue-300 flex items-center space-x-2 transition-colors"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
+                            <span>Change Size</span>
+                          </button>
+                        )}
+                        {canCustomizeModifiers(item) && (
+                          <button
+                            onClick={() => onOpenModal('ADDONS', item)}
+                            className="w-full text-left px-3 py-1.5 text-[11px] text-slate-200 hover:bg-blue-600/20 hover:text-blue-300 flex items-center space-x-2 transition-colors"
+                          >
+                            <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Add Ons</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => onOpenModal('NOTES', item)}
                           className="w-full text-left px-3 py-1.5 text-[11px] text-slate-200 hover:bg-blue-600/20 hover:text-blue-300 flex items-center space-x-2 transition-colors"
