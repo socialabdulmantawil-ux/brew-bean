@@ -204,6 +204,7 @@ const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 
 export default function App() {
+  const [catalogProducts, setCatalogProducts] = useState(CATALOG_PRODUCTS);
   // Initial cart matching reference screenshot
   const [cart, setCart] = useState<CartItem[]>([
     {
@@ -259,6 +260,8 @@ export default function App() {
   const [deliveryApp, setDeliveryApp] = useState('');
   const [otherDeliveryApp, setOtherDeliveryApp] = useState('');
   const [deliveryOrderNumber, setDeliveryOrderNumber] = useState('');
+  const [checkoutError, setCheckoutError] = useState('');
+  const orderStockApplied = useRef(false);
   
   // Right panel filtering
   const [selectedCategory, setSelectedCategory] = useState('All Items');
@@ -305,11 +308,20 @@ export default function App() {
   }, []);
 
   // Cart operations
+  const getAvailableStock = (productId: string, excludedCartItemId?: string, items = cart) => {
+    const product = catalogProducts.find(candidate => candidate.id === productId);
+    const quantityInOtherCartItems = items
+      .filter(item => item.productId === productId && item.cartItemId !== excludedCartItemId)
+      .reduce((total, item) => total + item.quantity, 0);
+    return Math.max(0, (product?.stock ?? 0) - quantityInOtherCartItems);
+  };
+
   const handleQuantityChange = (cartItemId: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.cartItemId === cartItemId) {
+        const availableStock = getAvailableStock(item.productId, item.cartItemId, prev);
         const newQty = delta > 0
-          ? Math.min(item.quantity + delta, 10)
+          ? Math.min(item.quantity + delta, 10, availableStock)
           : item.quantity + delta;
         return newQty > 0 ? { ...item, quantity: newQty } : item;
       }
@@ -353,7 +365,12 @@ export default function App() {
 
   const saveQuantity = () => {
     const quantity = Number(quantityInput);
-    if (!activeCartItem || !Number.isSafeInteger(quantity) || quantity < 1) return;
+    if (
+      !activeCartItem ||
+      !Number.isSafeInteger(quantity) ||
+      quantity < 1 ||
+      quantity > getAvailableStock(activeCartItem.productId, activeCartItem.cartItemId)
+    ) return;
     setCart(prev => prev.map(item =>
       item.cartItemId === activeCartItem.cartItemId ? { ...item, quantity } : item
     ));
@@ -367,6 +384,7 @@ export default function App() {
   };
 
   const handleAddToCart = (product: Product) => {
+    if (getAvailableStock(product.id) < 1) return;
     // Check if item exists in cart
     const existingIndex = cart.findIndex(c => c.productId === product.id && c.size === 'Regular' && c.selectedAddOns.length === 0);
     if (existingIndex > -1) {
@@ -387,6 +405,36 @@ export default function App() {
       };
       setCart(prev => [newItem, ...prev]);
     }
+  };
+
+  const confirmOrder = () => {
+    if (orderStockApplied.current) return;
+
+    const quantitiesByProduct = cart.reduce((quantities, item) => {
+      quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity);
+      return quantities;
+    }, new Map<string, number>());
+    const unavailableProduct = [...quantitiesByProduct].find(([productId, quantity]) =>
+      quantity > getAvailableStock(productId, undefined, [])
+    );
+
+    if (unavailableProduct) {
+      const product = catalogProducts.find(candidate => candidate.id === unavailableProduct[0]);
+      setCheckoutError(
+        `${product?.name ?? 'An item'} has only ${product?.stock ?? 0} in stock. Update the order quantity before checkout.`
+      );
+      return;
+    }
+
+    setCatalogProducts(products =>
+      products.map(product => ({
+        ...product,
+        stock: product.stock - (quantitiesByProduct.get(product.id) || 0)
+      }))
+    );
+    orderStockApplied.current = true;
+    setCheckoutError('');
+    setModalType('CHECKOUT_SUCCESS');
   };
 
   // Recalculate price helper
@@ -460,7 +508,11 @@ export default function App() {
   const deliveryAppName = deliveryApp === 'Other' ? otherDeliveryApp.trim() : deliveryApp;
 
   // Filter products for catalog
-  const filteredProducts = CATALOG_PRODUCTS.filter(product => {
+  const availableProducts = catalogProducts.map(product => ({
+    ...product,
+    stock: getAvailableStock(product.id)
+  }));
+  const filteredProducts = availableProducts.filter(product => {
     const matchesCategory = selectedCategory === 'All Items' || product.category === selectedCategory;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -714,6 +766,12 @@ export default function App() {
               />
             </label>
 
+            {checkoutError && (
+              <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {checkoutError}
+              </p>
+            )}
+
             <div className="flex gap-2 border-t border-slate-800 pt-3">
               <button
                 onClick={() => setModalType(null)}
@@ -722,7 +780,7 @@ export default function App() {
                 Cancel
               </button>
               <button
-                onClick={() => setModalType('CHECKOUT_SUCCESS')}
+                onClick={confirmOrder}
                 disabled={!deliveryDetailsValid}
                 className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-colors enabled:hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
               >
@@ -762,11 +820,14 @@ export default function App() {
             </div>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-slate-300">Enter quantity</span>
+              <span className="text-xs font-medium text-slate-300">
+                Enter quantity (up to {activeCartItem ? getAvailableStock(activeCartItem.productId, activeCartItem.cartItemId) : 0} available)
+              </span>
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                max={activeCartItem ? getAvailableStock(activeCartItem.productId, activeCartItem.cartItemId) : undefined}
                 autoFocus
                 value={quantityInput}
                 onChange={(event) => setQuantityInput(event.target.value.replace(/\D/g, ''))}
@@ -810,7 +871,12 @@ export default function App() {
               </button>
               <button
                 type="submit"
-                disabled={!Number.isSafeInteger(Number(quantityInput)) || Number(quantityInput) < 1}
+                disabled={
+                  !Number.isSafeInteger(Number(quantityInput)) ||
+                  Number(quantityInput) < 1 ||
+                  !activeCartItem ||
+                  Number(quantityInput) > getAvailableStock(activeCartItem.productId, activeCartItem.cartItemId)
+                }
                 className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-colors enabled:hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
               >
                 Set Quantity
@@ -1103,6 +1169,12 @@ export default function App() {
               )}
             </div>
 
+            {checkoutError && (
+              <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {checkoutError}
+              </p>
+            )}
+
             <div className="flex space-x-2 pt-2 border-t border-slate-800">
               <button
                 onClick={() => setModalType(null)}
@@ -1111,7 +1183,7 @@ export default function App() {
                 Cancel
               </button>
               <button
-                onClick={() => setModalType('CHECKOUT_SUCCESS')}
+                onClick={confirmOrder}
                 disabled={!paymentDetailsValid}
                 className={`flex-1 py-2 text-xs font-bold text-white rounded-xl shadow-lg transition-colors ${
                   paymentDetailsValid
@@ -1348,6 +1420,8 @@ export default function App() {
               <button
                 onClick={() => {
                   setCart([]);
+                  orderStockApplied.current = false;
+                  setCheckoutError('');
                   setCardLastFour('');
                   setCashReceived('');
                   setWalletReference('');

@@ -93,42 +93,53 @@ export default function ProductCatalog({
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[12px] pb-[24px]">
-          {products.map((product) => (
-            <button
-              type="button"
-              key={product.id}
-              onClick={() => onAddToCart(product)}
-              className="bg-[#131b2e] border border-slate-800/80 hover:border-blue-500/50 rounded-2xl p-[4px] flex flex-col gap-[10px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-900/10 group relative overflow-hidden text-left"
-            >
-              {product.tag && (
-                <span className={`absolute top-[8px] right-[8px] ${product.tagColor || 'bg-blue-600'} text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full z-10 shadow-md`}>
-                  {product.tag}
-                </span>
-              )}
-
-              <div className="w-full h-32 rounded-xl overflow-hidden bg-slate-900 relative">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                />
-              </div>
-
-              <div className="space-y-[4px]">
-                <h3 className="text-xs font-bold text-slate-100 group-hover:text-blue-400 transition-colors truncate">
-                  {product.name}
-                </h3>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-extrabold text-blue-400">{formatCurrency(product.price)}</span>
-                  <span className="text-[10px] text-slate-400 flex items-center space-x-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span>{product.stock} in stock</span>
+          {products.map((product) => {
+            const isOutOfStock = product.stock <= 0;
+            return (
+              <button
+                type="button"
+                key={product.id}
+                onClick={() => onAddToCart(product)}
+                disabled={isOutOfStock}
+                aria-label={`${product.name}, ${isOutOfStock ? 'out of stock' : `${product.stock} in stock`}`}
+                className={`relative flex flex-col gap-[10px] overflow-hidden rounded-2xl border p-[4px] text-left transition-all ${
+                  isOutOfStock
+                    ? 'cursor-not-allowed border-slate-800 bg-slate-900 opacity-50 grayscale'
+                    : 'group cursor-pointer border-slate-800/80 bg-[#131b2e] hover:scale-[1.02] hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-900/10'
+                }`}
+              >
+                {product.tag && (
+                  <span className={`absolute right-[8px] top-[8px] ${product.tagColor || 'bg-blue-600'} z-10 rounded-full px-2 py-0.5 text-[10px] font-extrabold text-white shadow-md`}>
+                    {product.tag}
                   </span>
+                )}
+
+                <div className="relative h-32 w-full overflow-hidden rounded-xl bg-slate-900">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className={`h-full w-full object-cover transition-transform duration-300 ${isOutOfStock ? '' : 'group-hover:scale-110'}`}
+                  />
                 </div>
-              </div>
-            </button>
-          ))}
+
+                <div className="space-y-[4px]">
+                  <h3 className={`truncate text-xs font-bold ${isOutOfStock ? 'text-slate-400' : 'text-slate-100 group-hover:text-blue-400 transition-colors'}`}>
+                    {product.name}
+                  </h3>
+
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-extrabold ${isOutOfStock ? 'text-slate-500' : 'text-blue-400'}`}>
+                      {formatCurrency(product.price)}
+                    </span>
+                    <span className={`flex items-center space-x-1 text-[10px] ${isOutOfStock ? 'text-red-300' : 'text-slate-400'}`}>
+                      {!isOutOfStock && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>}
+                      <span>{isOutOfStock ? 'Out of stock' : `${product.stock} in stock`}</span>
+                    </span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
