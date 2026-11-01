@@ -1,15 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   Coffee, 
-  Search, 
-  SlidersHorizontal, 
-  Plus, 
-  Minus, 
-  Pencil, 
   Trash2, 
-  Maximize2, 
-  PlusCircle, 
-  FileText, 
   X, 
   Check, 
   CreditCard, 
@@ -18,52 +10,16 @@ import {
   PauseCircle, 
   ShoppingBag, 
   Utensils, 
-  Sparkles, 
   ChevronDown, 
-  Clock, 
-  Wifi, 
-  Settings, 
   Tag, 
   ArrowRight,
   CheckCircle2,
   Printer,
-  CupSoda,
-  Cookie
 } from 'lucide-react';
-
-interface AddOn {
-  id: string;
-  name: string;
-  price: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  stock: number;
-  tag: string | null;
-  tagColor?: string;
-  image: string;
-  defaultOptions: { size: string; addOns: string[] };
-}
-
-interface CartItem {
-  cartItemId: string;
-  productId: string;
-  name: string;
-  basePrice: number;
-  unitPrice: number;
-  quantity: number;
-  size: string;
-  sizeAdjustment: number;
-  selectedAddOns: AddOn[];
-  notes: string;
-  image: string;
-}
-
-type ModalType = 'SIZE' | 'ADDONS' | 'NOTES' | 'QUANTITY' | 'DELIVERY_DETAILS' | 'PAYMENT' | 'CASH_TENDER' | 'CHECKOUT_SUCCESS' | null;
+import PosHeader from './components/PosHeader';
+import ProductCatalog from './components/ProductCatalog';
+import CartItemList from './components/CartItemList';
+import type { AddOn, CartItem, ModalType, Product, SwipeStart, SwipingItem } from './types';
 
 // Sample Product Catalog Data matching reference image
 const CATALOG_PRODUCTS: Product[] = [
@@ -317,8 +273,8 @@ export default function App() {
   const [quantityInput, setQuantityInput] = useState('');
   const quantityPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quantityLongPressTriggered = useRef(false);
-  const swipeStart = useRef<{ cartItemId: string; x: number; offset: number } | null>(null);
-  const [swipingItem, setSwipingItem] = useState<{ cartItemId: string; offset: number } | null>(null);
+  const swipeStart = useRef<SwipeStart | null>(null);
+  const [swipingItem, setSwipingItem] = useState<SwipingItem | null>(null);
 
   // System time ticker
   const [currentTime, setCurrentTime] = useState('');
@@ -513,45 +469,7 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col bg-[#0b101d] text-slate-100 font-sans select-none md:h-screen md:min-h-0 md:overflow-hidden">
       
-      {/* TOP HEADER / NAVBAR */}
-      <header className="min-h-14 bg-[#131b2e] border-b border-slate-800/80 px-3 sm:px-4 flex items-center justify-between gap-3 z-20 shrink-0">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-600/30">
-            POS
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-slate-800/80 flex items-center justify-center text-blue-400 border border-slate-700/50">
-              <Coffee className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold leading-tight text-white tracking-wide">Brew & Bean</h1>
-              <p className="text-[11px] text-slate-400 leading-none">Point of Sale <span className="text-slate-600">•</span> Terminal 01</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Center / Right status bar items */}
-        <div className="flex items-center space-x-2 sm:space-x-6 text-xs">
-          <div className="flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full border border-emerald-500/20 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <Wifi className="w-3.5 h-3.5" />
-            <span>Online</span>
-          </div>
-
-          <div className="hidden sm:flex items-center space-x-2 text-slate-300 font-medium bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/40">
-            <Clock className="w-4 h-4 text-blue-400" />
-            <span>{currentTime || '10:24 AM'}</span>
-            <span className="text-slate-500">|</span>
-            <span className="text-slate-400">
-              {new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
-            </span>
-          </div>
-
-          <button className="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 rounded-lg transition-colors border border-slate-700/50">
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
+      <PosHeader currentTime={currentTime} />
 
       {/* MAIN BODY: LEFT ORDER PANEL & RIGHT CATALOG GRID */}
       <div className="flex flex-1 flex-col overflow-visible md:flex-row md:overflow-hidden">
@@ -607,215 +525,21 @@ export default function App() {
             </div>
           </div>
 
-          {/* Cart Item List */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2.5 custom-scrollbar">
-            {cart.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
-                <ShoppingBag className="w-12 h-12 mb-3 stroke-[1.5] text-slate-600" />
-                <p className="text-sm font-medium text-slate-400">Order list is empty</p>
-                <p className="text-xs text-slate-600 mt-1">Select items from the right panel catalog to start an order</p>
-              </div>
-            ) : (
-              cart.map((item) => (
-                <div
-                  key={item.cartItemId}
-                  className={`relative rounded-xl ${activeMenuId === item.cartItemId ? 'z-20' : ''}`}
-                >
-                  {swipingItem?.cartItemId === item.cartItemId && swipingItem.offset < 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(item.cartItemId)}
-                      aria-label={`Remove ${item.name} from order`}
-                      tabIndex={0}
-                      style={{ width: Math.abs(swipingItem.offset) }}
-                      className="absolute inset-y-0 right-0 flex items-center justify-center bg-red-500/20 text-red-300 transition-[width] duration-75 hover:bg-red-500/40"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                  <div
-                    onPointerDown={(event) => {
-                      if (
-                        event.button !== 0 ||
-                        (event.target instanceof Element && event.target.closest('button, input, textarea, select'))
-                      ) return;
-                      swipeStart.current = { cartItemId: item.cartItemId, x: event.clientX, offset: 0 };
-                      event.currentTarget.setPointerCapture(event.pointerId);
-                    }}
-                    onPointerMove={(event) => {
-                      const start = swipeStart.current;
-                      if (!start || start.cartItemId !== item.cartItemId) return;
-                      const deltaX = Math.min(0, event.clientX - start.x);
-                      start.offset = Math.max(deltaX, -140);
-                      setSwipingItem({ cartItemId: item.cartItemId, offset: start.offset });
-                    }}
-                    onPointerUp={() => {
-                      const start = swipeStart.current;
-                      if (start?.cartItemId === item.cartItemId && start.offset <= -80) {
-                        handleRemoveItem(item.cartItemId);
-                      }
-                      swipeStart.current = null;
-                      setSwipingItem(null);
-                    }}
-                    onPointerCancel={() => {
-                      swipeStart.current = null;
-                      setSwipingItem(null);
-                    }}
-                    style={{
-                      transform: `translateX(${swipingItem?.cartItemId === item.cartItemId ? swipingItem.offset : 0}px)`,
-                      touchAction: 'pan-y'
-                    }}
-                    className="bg-[#1e293b]/50 border border-slate-700/40 hover:border-slate-600/60 rounded-xl p-2.5 transition-transform duration-150 flex items-start justify-between group relative gap-2"
-                  >
-                  {/* LEFT COLUMN: Image & Item Details */}
-                  <div className="flex items-start space-x-2.5 min-w-0 flex-1">
-                    <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      className="w-11 h-11 rounded-lg object-cover bg-slate-800 border border-slate-700/50 shrink-0 mt-0.5"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-semibold text-slate-100 truncate">{item.name}</h4>
-
-                      {/* Display Size Tag & Add-Ons as Vertical Column Stack */}
-                      <div className="mt-1 space-y-0.5">
-                        {/* Size indicator */}
-                        <div className="text-[11px] text-slate-400 font-medium flex items-center space-x-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
-                          <span>Size: <strong className="text-slate-200 font-semibold">{item.size}</strong></span>
-                        </div>
-
-                        {/* Add-Ons Vertical List */}
-                        {item.selectedAddOns.length > 0 && (
-                          <div className="space-y-0.5 pt-0.5">
-                            {item.selectedAddOns.map((addon) => {
-                              const displayName = addon.name.length > 15 
-                                ? addon.name.slice(0, 15) + '...' 
-                                : addon.name;
-                              return (
-                                <div 
-                                  key={addon.id || addon.name} 
-                                  className="text-[11px] text-emerald-400/90 flex items-center space-x-1 font-medium pl-2 border-l border-emerald-500/30 truncate max-w-[150px]"
-                                  title={addon.name}
-                                >
-                                  <span className="truncate">+ {displayName}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Notes line */}
-                        {item.notes && (
-                          <div className="text-[11px] text-amber-300/90 italic bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 mt-1 max-w-[170px] truncate">
-                            NOTE: {item.notes.toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* RIGHT COLUMN: Price & Edit with Quantity directly below */}
-                  <div className="flex flex-col items-end shrink-0 gap-2">
-                    {/* Top Row: Price Total & Edit Button */}
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs font-extrabold text-slate-100">
-                        {formatCurrency(item.unitPrice * item.quantity)}
-                      </span>
-
-                      {/* ITEM ACTIONS */}
-                      <div className="relative item-action-menu">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuId(activeMenuId === item.cartItemId ? null : item.cartItemId);
-                          }}
-                          className={`p-1 rounded-lg transition-colors ${
-                            activeMenuId === item.cartItemId 
-                              ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40' 
-                              : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 border border-transparent'
-                          }`}
-                          title="Edit item"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-
-                        {/* POPOVER DROPDOWN MENU */}
-                        {activeMenuId === item.cartItemId && (
-                          <div className="absolute right-0 top-7 w-44 bg-[#1a233a] border border-slate-700/80 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
-                            <button
-                              onClick={() => openModal('SIZE', item)}
-                              className="w-full text-left px-3 py-1.5 text-[11px] text-slate-200 hover:bg-blue-600/20 hover:text-blue-300 flex items-center space-x-2 transition-colors"
-                            >
-                              <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
-                              <span>Change Size</span>
-                            </button>
-                            
-                            <button
-                              onClick={() => openModal('ADDONS', item)}
-                              className="w-full text-left px-3 py-1.5 text-[11px] text-slate-200 hover:bg-blue-600/20 hover:text-blue-300 flex items-center space-x-2 transition-colors"
-                            >
-                              <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Add Ons</span>
-                            </button>
-
-                            <button
-                              onClick={() => openModal('NOTES', item)}
-                              className="w-full text-left px-3 py-1.5 text-[11px] text-slate-200 hover:bg-blue-600/20 hover:text-blue-300 flex items-center space-x-2 transition-colors"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-amber-400" />
-                              <span>Notes</span>
-                            </button>
-
-                            <div className="my-1 border-t border-slate-700/50"></div>
-
-                            <button
-                              onClick={() => handleRemoveItem(item.cartItemId)}
-                              className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/20 hover:text-red-300 flex items-center space-x-2 transition-colors font-medium"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Remove Item</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Bottom Row: Quantity Controls */}
-                    <div className="flex items-center bg-[#0b101d]/80 border border-slate-700/60 rounded-lg p-0.5">
-                      <button 
-                        onPointerDown={() => startQuantityLongPress(item)}
-                        onPointerUp={endQuantityLongPress}
-                        onPointerLeave={endQuantityLongPress}
-                        onPointerCancel={endQuantityLongPress}
-                        onClick={() => handleQuantityButtonClick(item, -1)}
-                        className="min-h-8 min-w-8 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                        aria-label={`Decrease ${item.name} quantity or hold to enter quantity`}
-                        title="Hold to enter quantity"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="w-5 text-center text-xs font-bold text-slate-200">{item.quantity}</span>
-                      <button 
-                        onPointerDown={() => startQuantityLongPress(item)}
-                        onPointerUp={endQuantityLongPress}
-                        onPointerLeave={endQuantityLongPress}
-                        onPointerCancel={endQuantityLongPress}
-                        onClick={() => handleQuantityButtonClick(item, 1)}
-                        className="min-h-8 min-w-8 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                        aria-label={`Increase ${item.name} quantity or hold to enter quantity`}
-                        title="Hold to enter quantity; quantities above 10 can be entered here"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <CartItemList
+            cart={cart}
+            products={CATALOG_PRODUCTS}
+            activeMenuId={activeMenuId}
+            onActiveMenuChange={setActiveMenuId}
+            swipeStart={swipeStart}
+            swipingItem={swipingItem}
+            setSwipingItem={setSwipingItem}
+            onRemoveItem={handleRemoveItem}
+            onOpenModal={openModal}
+            onQuantityLongPressStart={startQuantityLongPress}
+            onQuantityLongPressEnd={endQuantityLongPress}
+            onQuantityButtonClick={handleQuantityButtonClick}
+            formatCurrency={formatCurrency}
+          />
 
           {/* Order Total & Checkout */}
           <div className="border-t border-slate-800/80 bg-[#0d1424] p-3.5 space-y-3">
@@ -901,130 +625,15 @@ export default function App() {
           </div>
         </div>
 
-        {/* RIGHT PANEL: PRODUCT CATALOG & GRID */}
-        <div className="flex-1 flex flex-col min-h-[70vh] md:h-full bg-[#0b101d] overflow-hidden p-3 sm:p-4 space-y-4">
-          
-          {/* Top Filter & Search Controls */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-xl">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input 
-                type="text"
-                placeholder="Search products by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#131b2e] border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 shadow-inner"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-white"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <button className="p-2.5 bg-[#131b2e] border border-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors">
-              <SlidersHorizontal className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Category Pills */}
-          <div className="flex items-center space-x-2 overflow-x-auto pb-1 custom-scrollbar shrink-0">
-            {[
-              { id: 'All Items', icon: Sparkles },
-              { id: 'Coffee', icon: Coffee },
-              { id: 'Drinks', icon: CupSoda },
-              { id: 'Bakery', icon: Cookie },
-              { id: 'Meals', icon: Utensils }
-            ].map(cat => {
-              const CategoryIcon = cat.icon;
-              const isActive = selectedCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                    isActive 
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                      : 'bg-[#131b2e] text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800/80'
-                  }`}
-                >
-                  <CategoryIcon className="w-3.5 h-3.5" />
-                  <span>{cat.id}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Header Item Count Info */}
-          <div className="flex items-center justify-between shrink-0">
-            <h2 className="text-sm font-bold text-slate-200 tracking-wide">
-              {selectedCategory}
-            </h2>
-            <span className="text-xs text-slate-500 font-medium">
-              {filteredProducts.length} products available
-            </span>
-          </div>
-
-          {/* Catalog Products Grid */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 pb-6">
-              {filteredProducts.map(product => (
-                <div
-                  key={product.id}
-                  onClick={() => handleAddToCart(product)}
-                  className="bg-[#131b2e] border border-slate-800/80 hover:border-blue-500/50 rounded-2xl p-2.5 flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-900/10 group relative overflow-hidden"
-                >
-                  {/* Badge Tag */}
-                  {product.tag && (
-                    <span className={`absolute top-4 right-4 ${product.tagColor || 'bg-blue-600'} text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full z-10 shadow-md`}>
-                      {product.tag}
-                    </span>
-                  )}
-
-                  {/* Image */}
-                  <div className="w-full h-32 rounded-xl overflow-hidden bg-slate-900 mb-2.5 relative">
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-                    />
-                  </div>
-
-                  {/* Details */}
-                  <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-slate-100 group-hover:text-blue-400 transition-colors truncate">
-                      {product.name}
-                    </h3>
-                    
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-sm font-extrabold text-blue-400">
-                        {formatCurrency(product.price)}
-                      </span>
-                      <span className="text-[10px] text-slate-400 flex items-center space-x-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>{product.stock} in stock</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Footer Status Bar */}
-          <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
-            <span>Prices in Philippine pesos (PHP)</span>
-            <span className="text-emerald-500 font-medium flex items-center space-x-1">
-              <Check className="w-3 h-3" />
-              <span>Fresh & Quality Assured</span>
-            </span>
-          </div>
-
-        </div>
+        <ProductCatalog
+          products={filteredProducts}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAddToCart={handleAddToCart}
+          formatCurrency={formatCurrency}
+        />
 
       </div>
 
