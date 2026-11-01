@@ -617,7 +617,10 @@ export default function App() {
               </div>
             ) : (
               cart.map((item) => (
-                <div key={item.cartItemId} className="relative overflow-hidden rounded-xl">
+                <div
+                  key={item.cartItemId}
+                  className={`relative rounded-xl ${activeMenuId === item.cartItemId ? 'z-20' : ''}`}
+                >
                   {swipingItem?.cartItemId === item.cartItemId && swipingItem.offset < 0 && (
                     <button
                       type="button"
@@ -705,7 +708,7 @@ export default function App() {
                         {/* Notes line */}
                         {item.notes && (
                           <div className="text-[11px] text-amber-300/90 italic bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 mt-1 max-w-[170px] truncate">
-                            Note: {item.notes}
+                            NOTE: {item.notes.toUpperCase()}
                           </div>
                         )}
                       </div>
@@ -1662,7 +1665,7 @@ export default function App() {
                         </p>
                       )}
                       {item.notes.trim() && (
-                        <p className="break-words text-[9px]">Note: {item.notes}</p>
+                        <p className="break-words text-[9px]">NOTE: {item.notes.toUpperCase()}</p>
                       )}
                     </div>
                   ))}
