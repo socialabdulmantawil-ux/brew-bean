@@ -13,6 +13,7 @@ import type { Product } from "../types";
 
 interface ProductCatalogProps {
   products: Product[];
+  categories: string[];
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
   searchQuery: string;
@@ -21,16 +22,16 @@ interface ProductCatalogProps {
   formatCurrency: (amount: number) => string;
 }
 
-const categories = [
-  { id: "All Items", icon: Sparkles },
-  { id: "Coffee", icon: Coffee },
-  { id: "Drinks", icon: CupSoda },
-  { id: "Bakery", icon: Cookie },
-  { id: "Meals", icon: Utensils },
-];
+const categoryIcons = {
+  Coffee,
+  Drinks: CupSoda,
+  Bakery: Cookie,
+  Meals: Utensils,
+} as const;
 
 export default function ProductCatalog({
   products,
+  categories,
   selectedCategory,
   onCategoryChange,
   searchQuery,
@@ -67,12 +68,13 @@ export default function ProductCatalog({
       </div>
 
       <div className="flex items-center space-x-2 overflow-x-auto pb-1 custom-scrollbar shrink-0">
-        {categories.map(({ id, icon: CategoryIcon }) => {
-          const isActive = selectedCategory === id;
+        {["All Items", ...categories].map((category) => {
+          const CategoryIcon = categoryIcons[category as keyof typeof categoryIcons] || Sparkles;
+          const isActive = selectedCategory === category;
           return (
             <button
-              key={id}
-              onClick={() => onCategoryChange(id)}
+              key={category}
+              onClick={() => onCategoryChange(category)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 isActive
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
@@ -80,7 +82,7 @@ export default function ProductCatalog({
               }`}
             >
               <CategoryIcon className="w-3.5 h-3.5" />
-              <span>{id}</span>
+              <span>{category}</span>
             </button>
           );
         })}

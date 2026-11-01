@@ -16,6 +16,12 @@ export interface AddOn {
   price: number;
 }
 
+export interface SizeOption {
+  id: string;
+  name: string;
+  adjustment: number;
+}
+
 export interface CartItem {
   cartItemId: string;
   productId: string;

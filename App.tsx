@@ -19,191 +19,43 @@ import {
 import PosHeader from './components/PosHeader';
 import ProductCatalog from './components/ProductCatalog';
 import CartItemList from './components/CartItemList';
-import type { AddOn, CartItem, ModalType, Product, SwipeStart, SwipingItem } from './types';
-
-// Sample Product Catalog Data matching reference image
-const CATALOG_PRODUCTS: Product[] = [
-  {
-    id: 'p1',
-    name: 'Espresso Double',
-    category: 'Coffee',
-    price: 3.50,
-    stock: 45,
-    tag: 'Popular',
-    tagColor: 'bg-indigo-600',
-    image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Single shot', addOns: [] }
-  },
-  {
-    id: 'p2',
-    name: 'Iced Latte',
-    category: 'Coffee',
-    price: 4.75,
-    stock: 32,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Regular', addOns: [] }
-  },
-  {
-    id: 'p3',
-    name: 'Caramel Macchiato',
-    category: 'Coffee',
-    price: 5.25,
-    stock: 20,
-    tag: 'Hot',
-    tagColor: 'bg-red-500',
-    image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Large', addOns: ['50% sugar'] }
-  },
-  {
-    id: 'p4',
-    name: 'Cappuccino',
-    category: 'Coffee',
-    price: 4.25,
-    stock: 18,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Regular', addOns: [] }
-  },
-  {
-    id: 'p5',
-    name: 'Butter Croissant',
-    category: 'Bakery',
-    price: 3.00,
-    stock: 15,
-    tag: 'Fresh',
-    tagColor: 'bg-emerald-500',
-    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Regular', addOns: [] }
-  },
-  {
-    id: 'p6',
-    name: 'Avocado Toast',
-    category: 'Meals',
-    price: 8.50,
-    stock: 12,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1588137378633-dea1336ce1e2?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Standard', addOns: [] }
-  },
-  {
-    id: 'p7',
-    name: 'Club Sandwich',
-    category: 'Meals',
-    price: 9.75,
-    stock: 8,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Full', addOns: [] }
-  },
-  {
-    id: 'p8',
-    name: 'Blueberry Muffin',
-    category: 'Bakery',
-    price: 3.50,
-    stock: 24,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1607958996333-41aef7caefaa?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Regular', addOns: [] }
-  },
-  {
-    id: 'p9',
-    name: 'Matcha Green Tea',
-    category: 'Drinks',
-    price: 5.00,
-    stock: 30,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Medium', addOns: [] }
-  },
-  {
-    id: 'p10',
-    name: 'Fresh Orange Juice',
-    category: 'Drinks',
-    price: 4.50,
-    stock: 25,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Regular', addOns: [] }
-  },
-  {
-    id: 'p11',
-    name: 'Pepperoni Slice',
-    category: 'Meals',
-    price: 4.25,
-    stock: 14,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: '1 Slice', addOns: [] }
-  },
-  {
-    id: 'p12',
-    name: 'Chocolate Brownie',
-    category: 'Bakery',
-    price: 3.75,
-    stock: 19,
-    tag: 'Popular',
-    tagColor: 'bg-indigo-600',
-    image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Piece', addOns: [] }
-  },
-  {
-    id: 'p13',
-    name: 'Sparkling Water',
-    category: 'Drinks',
-    price: 2.25,
-    stock: 50,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: '500ml', addOns: [] }
-  },
-  {
-    id: 'p14',
-    name: 'Classic Burger',
-    category: 'Meals',
-    price: 10.50,
-    stock: 10,
-    tag: 'Chef Special',
-    tagColor: 'bg-amber-500',
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Single Patty', addOns: [] }
-  },
-  {
-    id: 'p15',
-    name: 'Iced Tea Lemon',
-    category: 'Drinks',
-    price: 3.75,
-    stock: 28,
-    tag: null,
-    image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&q=80&w=400',
-    defaultOptions: { size: 'Regular', addOns: [] }
-  }
-];
-
-// Available Size Options with Price adjustments
-const SIZE_OPTIONS = [
-  { id: 'small', name: 'Small', adjustment: -0.50 },
-  { id: 'regular', name: 'Regular', adjustment: 0.00 },
-  { id: 'large', name: 'Large', adjustment: 0.75 },
-  { id: 'xlarge', name: 'X-Large', adjustment: 1.25 }
-];
-
-// Available Add-On Modifiers
-const ADD_ON_OPTIONS: AddOn[] = [
-  { id: 'extra_shot', name: 'Extra Espresso Shot', price: 1.00 },
-  { id: 'caramel_syrup', name: 'Caramel Syrup', price: 0.50 },
-  { id: 'vanilla_syrup', name: 'Vanilla Syrup', price: 0.50 },
-  { id: 'almond_milk', name: 'Almond Milk', price: 0.75 },
-  { id: 'oat_milk', name: 'Oat Milk', price: 0.75 },
-  { id: 'whipped_cream', name: 'Whipped Cream', price: 0.60 },
-  { id: 'less_ice', name: 'Less Ice', price: 0.00 },
-  { id: 'sugar_50', name: '50% Sugar', price: 0.00 }
-];
+import type { AddOn, CartItem, ModalType, Product, SizeOption, SwipeStart, SwipingItem } from './types';
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 
+interface PosBootstrap {
+  categories: string[];
+  products: Product[];
+  sizeOptions: SizeOption[];
+  addOns: AddOn[];
+  settings: {
+    taxRatePercent: number;
+    promoDiscountPercent: number;
+    currency: string;
+  };
+  nextOrderNumber: number;
+}
+
+interface CreateOrderResponse {
+  orderNumber: number;
+  products: Product[];
+}
+
 export default function App() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [sizeOptions, setSizeOptions] = useState<SizeOption[]>([]);
+  const [addOnOptions, setAddOnOptions] = useState<AddOn[]>([]);
+  const [taxRatePercent, setTaxRatePercent] = useState(15);
+  const [promoDiscountPercent, setPromoDiscountPercent] = useState(10);
+  const [currentOrderNumber, setCurrentOrderNumber] = useState(1048);
+  const [completedOrderNumber, setCompletedOrderNumber] = useState<number | null>(null);
+  const [isDatabaseReady, setIsDatabaseReady] = useState(false);
+  const [databaseError, setDatabaseError] = useState('');
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [saveOrderError, setSaveOrderError] = useState('');
+
   // Initial cart matching reference screenshot
   const [cart, setCart] = useState<CartItem[]>([
     {
@@ -278,6 +130,30 @@ export default function App() {
 
   // System time ticker
   const [currentTime, setCurrentTime] = useState('');
+
+  useEffect(() => {
+    const loadDatabase = async () => {
+      try {
+        const response = await fetch('/api/bootstrap');
+        if (!response.ok) {
+          throw new Error(`Database API returned ${response.status}.`);
+        }
+        const data = await response.json() as PosBootstrap;
+        setProducts(data.products);
+        setCategories(data.categories);
+        setSizeOptions(data.sizeOptions);
+        setAddOnOptions(data.addOns);
+        setTaxRatePercent(data.settings.taxRatePercent);
+        setPromoDiscountPercent(data.settings.promoDiscountPercent);
+        setCurrentOrderNumber(data.nextOrderNumber);
+        setIsDatabaseReady(true);
+        setDatabaseError('');
+      } catch (error) {
+        setDatabaseError(error instanceof Error ? error.message : 'Unable to connect to the SQLite database.');
+      }
+    };
+    void loadDatabase();
+  }, []);
 
   useEffect(() => {
     const updateTime = () => {
@@ -420,11 +296,11 @@ export default function App() {
 
   // Financial Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-  const originalTotalAmount = subtotal * 1.15;
+  const originalTotalAmount = subtotal * (1 + taxRatePercent / 100);
   const promoActive = cart.length > 0 && orderType !== 'Delivery' && isPromoApplied;
-  const discountAmount = promoActive ? subtotal * 0.10 : 0;
+  const discountAmount = promoActive ? subtotal * (promoDiscountPercent / 100) : 0;
   const taxableAmount = subtotal - discountAmount;
-  const taxAmount = taxableAmount * 0.15; // 15% Tax/VAT
+  const taxAmount = taxableAmount * (taxRatePercent / 100);
   const totalAmount = taxableAmount + taxAmount;
   const cashReceivedAmount = Number.parseFloat(cashReceived);
   useEffect(() => {
@@ -459,8 +335,61 @@ export default function App() {
     /^\d{4}$/.test(deliveryOrderNumber);
   const deliveryAppName = deliveryApp === 'Other' ? otherDeliveryApp.trim() : deliveryApp;
 
+  const completeOrder = async () => {
+    if (!isDatabaseReady || isSavingOrder) return;
+    setIsSavingOrder(true);
+    setSaveOrderError('');
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          orderType,
+          customerType,
+          promoCode,
+          promoApplied: promoActive,
+          items: cart.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            size: item.size,
+            basePrice: item.basePrice,
+            sizeAdjustment: item.sizeAdjustment,
+            selectedAddOns: item.selectedAddOns.map((addOn) => addOn.id),
+            notes: item.notes,
+          })),
+          payment: orderType === 'Delivery'
+            ? null
+            : {
+                method: paymentMethod,
+                cashReceived: paymentMethod === 'Cash' ? cashReceivedAmount : null,
+                cardLastFour: paymentMethod === 'Card' ? cardLastFour : null,
+                walletReference: paymentMethod === 'Wallet' ? walletReference : null,
+              },
+          delivery: orderType === 'Delivery'
+            ? { appName: deliveryAppName, orderNumber: deliveryOrderNumber }
+            : null,
+        }),
+      });
+      const result = await response.json() as CreateOrderResponse | { error?: string };
+      if (!response.ok) {
+        throw new Error('error' in result && result.error ? result.error : `Unable to save order (${response.status}).`);
+      }
+      if (!('orderNumber' in result) || !Array.isArray(result.products)) {
+        throw new Error('The database returned an invalid order response.');
+      }
+      setCompletedOrderNumber(result.orderNumber);
+      setCurrentOrderNumber(result.orderNumber + 1);
+      setProducts(result.products);
+      setModalType('CHECKOUT_SUCCESS');
+    } catch (error) {
+      setSaveOrderError(error instanceof Error ? error.message : 'Unable to save the order.');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
   // Filter products for catalog
-  const filteredProducts = CATALOG_PRODUCTS.filter(product => {
+  const filteredProducts = products.filter(product => {
     const matchesCategory = selectedCategory === 'All Items' || product.category === selectedCategory;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -468,7 +397,12 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0b101d] text-slate-100 font-sans select-none md:h-screen md:min-h-0 md:overflow-hidden">
-      
+      {databaseError && (
+        <div role="alert" className="flex items-center justify-between gap-3 bg-red-950 px-4 py-2 text-xs text-red-200">
+          <span>SQLite database unavailable: {databaseError}. Start the app with <code>npm run dev</code>.</span>
+          <button onClick={() => window.location.reload()} className="shrink-0 font-bold underline">Retry</button>
+        </div>
+      )}
       <PosHeader currentTime={currentTime} />
 
       {/* MAIN BODY: LEFT ORDER PANEL & RIGHT CATALOG GRID */}
@@ -481,7 +415,7 @@ export default function App() {
           <div className="p-3.5 border-b border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="bg-blue-600/20 text-blue-400 font-semibold px-3 py-1 rounded-lg text-xs border border-blue-500/30 tracking-wide">
-                Order #1048
+                Order #{currentOrderNumber}
               </span>
               <div className="relative flex-1 ml-3">
                 <select 
@@ -527,7 +461,7 @@ export default function App() {
 
           <CartItemList
             cart={cart}
-            products={CATALOG_PRODUCTS}
+            products={products}
             activeMenuId={activeMenuId}
             onActiveMenuChange={setActiveMenuId}
             swipeStart={swipeStart}
@@ -584,7 +518,7 @@ export default function App() {
                 <div className="flex items-center justify-between text-[11px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-lg">
                   <span className="flex items-center space-x-1">
                     <Check className="w-3 h-3" />
-                    <span>10% OFF applied</span>
+                    <span>{promoDiscountPercent}% OFF applied</span>
                   </span>
                   <button onClick={togglePromo} className="hover:text-emerald-200">
                     <X className="w-3 h-3" />
@@ -627,6 +561,7 @@ export default function App() {
 
         <ProductCatalog
           products={filteredProducts}
+          categories={categories}
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
           searchQuery={searchQuery}
@@ -722,13 +657,18 @@ export default function App() {
                 Cancel
               </button>
               <button
-                onClick={() => setModalType('CHECKOUT_SUCCESS')}
-                disabled={!deliveryDetailsValid}
+                onClick={() => void completeOrder()}
+                disabled={!deliveryDetailsValid || isSavingOrder}
                 className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-colors enabled:hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
               >
-                Confirm Delivery Order
+                {isSavingOrder ? 'Saving order...' : 'Confirm Delivery Order'}
               </button>
             </div>
+            {saveOrderError && (
+              <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {saveOrderError}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -835,7 +775,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto hide-scrollbar">
-              {SIZE_OPTIONS.map((sz) => {
+              {sizeOptions.map((sz) => {
                 const isSelected = activeCartItem.size === sz.name;
                 const calculatedPrice = activeCartItem.basePrice + sz.adjustment;
                 return (
@@ -901,7 +841,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto hide-scrollbar">
-              {ADD_ON_OPTIONS.map((addon) => {
+              {addOnOptions.map((addon) => {
                 const isChecked = activeCartItem.selectedAddOns?.some(a => a.id === addon.id);
                 return (
                   <button
@@ -930,7 +870,7 @@ export default function App() {
             </div>
 
             <div className="flex space-x-2 pt-2 border-t border-slate-800">
-              <button 
+              <button
                 onClick={() => setModalType(null)}
                 className="flex-1 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
               >
@@ -1037,12 +977,12 @@ export default function App() {
               </div>
               {promoActive && (
                 <div className="flex justify-between text-emerald-400 font-medium">
-                  <span>Discount (10%)</span>
+                  <span>Discount ({promoDiscountPercent}%)</span>
                   <span>-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-slate-400">
-                <span>Tax / VAT (15%)</span>
+                <span>Tax / VAT ({taxRatePercent}%)</span>
                 <span className="font-semibold text-slate-200">{formatCurrency(taxAmount)}</span>
               </div>
               <div className="flex justify-between items-center text-sm font-extrabold text-white pt-2 border-t border-slate-800">
@@ -1103,6 +1043,11 @@ export default function App() {
               )}
             </div>
 
+            {saveOrderError && (
+              <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {saveOrderError}
+              </div>
+            )}
             <div className="flex space-x-2 pt-2 border-t border-slate-800">
               <button
                 onClick={() => setModalType(null)}
@@ -1111,15 +1056,15 @@ export default function App() {
                 Cancel
               </button>
               <button
-                onClick={() => setModalType('CHECKOUT_SUCCESS')}
-                disabled={!paymentDetailsValid}
+                onClick={() => void completeOrder()}
+                disabled={!paymentDetailsValid || isSavingOrder}
                 className={`flex-1 py-2 text-xs font-bold text-white rounded-xl shadow-lg transition-colors ${
-                  paymentDetailsValid
+                  paymentDetailsValid && !isSavingOrder
                     ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/30'
                     : 'bg-slate-700 text-slate-400 cursor-not-allowed shadow-none'
                 }`}
               >
-                Confirm Payment
+                {isSavingOrder ? 'Saving order...' : 'Confirm Payment'}
               </button>
             </div>
           </div>
@@ -1215,7 +1160,7 @@ export default function App() {
               <p className="mt-1 text-xs text-slate-400">
                 {orderType === 'Delivery'
                   ? `Delivery order #${deliveryOrderNumber} confirmed`
-                  : 'Receipt generated for Order #1048'}
+                  : `Receipt generated for Order #${completedOrderNumber ?? currentOrderNumber}`}
               </p>
             </div>
 
@@ -1233,7 +1178,7 @@ export default function App() {
               <section className="space-y-0.5 border-b border-dashed border-black py-2">
                 <div className="flex justify-between gap-2">
                   <span>Order #</span>
-                  <span>1048</span>
+                  <span>{completedOrderNumber ?? currentOrderNumber}</span>
                 </div>
                 <div className="flex justify-between gap-2">
                   <span>Date</span>
@@ -1289,7 +1234,7 @@ export default function App() {
                   </div>
                 )}
                 <div className="flex justify-between gap-2">
-                  <span>Tax / VAT (15%)</span>
+                  <span>Tax / VAT ({taxRatePercent}%)</span>
                   <span>{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between gap-2 border-t border-black pt-1 text-xs font-bold">
