@@ -26,6 +26,7 @@ import {
   Tag, 
   ArrowRight,
   CheckCircle2,
+  Printer,
   CupSoda,
   Cookie
 } from 'lucide-react';
@@ -1105,11 +1106,11 @@ export default function App() {
                 Cancel
               </button>
               <button
-                onClick={() => setModalType('PAYMENT')}
+                onClick={() => setModalType('CHECKOUT_SUCCESS')}
                 disabled={!deliveryDetailsValid}
                 className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-colors enabled:hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
               >
-                Continue to Payment
+                Confirm Delivery Order
               </button>
             </div>
           </div>
@@ -1590,84 +1591,164 @@ export default function App() {
 
       {/* CHECKOUT SUCCESS MODAL */}
       {modalType === 'CHECKOUT_SUCCESS' && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#131b2e] border border-slate-700 rounded-2xl w-full max-w-sm p-6 text-center space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="w-14 h-14 bg-emerald-500/20 border border-emerald-500/40 rounded-full flex items-center justify-center text-emerald-400 mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold text-white">Order Completed!</h3>
-              <p className="text-xs text-slate-400 mt-1">Receipt generated for Order #1048</p>
-            </div>
-
-            <div className="bg-[#0b101d] rounded-xl p-3 text-left space-y-1 text-xs border border-slate-800">
-              <div className="flex justify-between text-slate-400">
-                <span>Payment Method:</span>
-                <span className="text-slate-200 font-semibold">{paymentMethod}</span>
+        <div className="receipt-print-root fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-2 backdrop-blur-md sm:p-4">
+          <div className="my-auto flex w-full max-w-md flex-col items-center gap-4 py-4">
+            <div className="receipt-confirmation-header text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/20 text-emerald-400">
+                <CheckCircle2 className="h-7 w-7" />
               </div>
+              <h3 className="text-lg font-bold text-white">
+                {orderType === 'Delivery' ? 'Delivery Order Confirmed!' : 'Order Completed!'}
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">
+                {orderType === 'Delivery'
+                  ? `Delivery order #${deliveryOrderNumber} confirmed`
+                  : 'Receipt generated for Order #1048'}
+              </p>
+            </div>
 
-              {orderType === 'Delivery' && (
-                <>
-                  <div className="flex justify-between text-slate-400">
-                    <span>Delivery app:</span>
-                    <span className="text-slate-200 font-semibold">{deliveryAppName}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-400">
-                    <span>Delivery order #:</span>
-                    <span className="text-slate-200 font-semibold">{deliveryOrderNumber}</span>
-                  </div>
-                </>
-              )}
-              {paymentMethod === 'Card' && (
-                <div className="flex justify-between text-slate-400">
-                  <span>Transaction ending:</span>
-                  <span className="text-slate-200 font-semibold">•••• {cardLastFour}</span>
+            <article className="receipt-paper w-[80mm] shrink-0 bg-white p-4 font-mono text-[10px] leading-snug text-black shadow-2xl">
+              <header className="border-b border-dashed border-black pb-2 text-center">
+                <h2 className="text-base font-bold tracking-wide">BREW &amp; BEAN</h2>
+                <p className="mt-0.5 text-[9px] uppercase tracking-widest">Order Receipt</p>
+                {orderType === 'Delivery' && (
+                  <p className="mt-1 border-y-2 border-black py-1 text-[11px] font-black uppercase tracking-wide">
+                    Delivery: {deliveryAppName} | Order #{deliveryOrderNumber}
+                  </p>
+                )}
+              </header>
+
+              <section className="space-y-0.5 border-b border-dashed border-black py-2">
+                <div className="flex justify-between gap-2">
+                  <span>Order #</span>
+                  <span>1048</span>
                 </div>
-              )}
-              {paymentMethod === 'Cash' && (
-                <>
-                  <div className="flex justify-between text-slate-400">
-                    <span>Cash received:</span>
-                    <span className="text-slate-200 font-semibold">{formatCurrency(cashReceivedAmount)}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-400">
-                    <span>Change:</span>
-                    <span className="text-slate-200 font-semibold">{formatCurrency(cashReceivedAmount - totalAmount)}</span>
-                  </div>
-                </>
-              )}
-              {paymentMethod === 'Wallet' && (
-                <div className="flex justify-between gap-3 text-slate-400">
-                  <span>Wallet reference:</span>
-                  <span className="text-right text-slate-200 font-semibold">{walletReference}</span>
+                <div className="flex justify-between gap-2">
+                  <span>Date</span>
+                  <span>{new Date().toLocaleDateString('en-PH')}</span>
                 </div>
-              )}
-              <div className="flex justify-between text-slate-400">
-                <span>Items Count:</span>
-                <span className="text-slate-200 font-semibold">{cart.reduce((a,b)=>a+b.quantity,0)} items</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Total Paid:</span>
-                <span className="text-blue-400 font-extrabold text-sm">{formatCurrency(totalAmount)}</span>
-              </div>
-            </div>
+                <div className="flex justify-between gap-2">
+                  <span>Time</span>
+                  <span>{currentTime}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>Order type</span>
+                  <span>{orderType}</span>
+                </div>
+              </section>
 
-            <button
-              onClick={() => {
-                setCart([]);
-                setCardLastFour('');
-                setCashReceived('');
-                setWalletReference('');
-                setDeliveryApp('');
-                setOtherDeliveryApp('');
-                setDeliveryOrderNumber('');
-                setModalType(null);
-              }}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-blue-600/30 transition-all"
-            >
-              Start New Order
-            </button>
+              <section className="border-b border-dashed border-black py-2">
+                <div className="mb-1 flex justify-between font-bold">
+                  <span>ITEM</span>
+                  <span>AMOUNT</span>
+                </div>
+                <div className="space-y-2">
+                  {cart.map((item) => (
+                    <div key={item.cartItemId} className="break-words">
+                      <div className="flex justify-between gap-2">
+                        <span className="min-w-0 flex-1">{item.name}</span>
+                        <span className="shrink-0">{formatCurrency(item.unitPrice * item.quantity)}</span>
+                      </div>
+                      <p className="text-[9px]">
+                        {item.quantity} × {formatCurrency(item.unitPrice)} · {item.size}
+                      </p>
+                      {item.selectedAddOns.length > 0 && (
+                        <p className="text-[9px]">
+                          + {item.selectedAddOns.map((addOn) => addOn.name).join(', ')}
+                        </p>
+                      )}
+                      {item.notes.trim() && (
+                        <p className="break-words text-[9px]">Note: {item.notes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-0.5 border-b border-dashed border-black py-2">
+                <div className="flex justify-between gap-2">
+                  <span>Items ({cart.reduce((count, item) => count + item.quantity, 0)})</span>
+                  <span>{formatCurrency(subtotal)}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between gap-2">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-2">
+                  <span>Tax / VAT (15%)</span>
+                  <span>{formatCurrency(taxAmount)}</span>
+                </div>
+                <div className="flex justify-between gap-2 border-t border-black pt-1 text-xs font-bold">
+                  <span>{orderType === 'Delivery' ? 'ORDER TOTAL' : 'TOTAL PAID'}</span>
+                  <span>{formatCurrency(totalAmount)}</span>
+                </div>
+              </section>
+
+              {orderType !== 'Delivery' && (
+                <section className="space-y-0.5 border-b border-dashed border-black py-2">
+                  <div className="flex justify-between gap-2">
+                    <span>Payment</span>
+                    <span>{paymentMethod}</span>
+                  </div>
+                  {paymentMethod === 'Card' && (
+                    <div className="flex justify-between gap-2">
+                      <span>Transaction ending</span>
+                      <span>•••• {cardLastFour}</span>
+                    </div>
+                  )}
+                  {paymentMethod === 'Cash' && (
+                    <>
+                      <div className="flex justify-between gap-2">
+                        <span>Cash received</span>
+                        <span>{formatCurrency(cashReceivedAmount)}</span>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span>Change</span>
+                        <span>{formatCurrency(cashReceivedAmount - totalAmount)}</span>
+                      </div>
+                    </>
+                  )}
+                  {paymentMethod === 'Wallet' && (
+                    <div className="flex justify-between gap-2">
+                      <span>Wallet reference</span>
+                      <span className="break-all text-right">{walletReference}</span>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              <footer className="pt-2 text-center text-[9px]">
+                <p>Thank you for your order!</p>
+                <p className="mt-0.5">Please come again</p>
+              </footer>
+            </article>
+
+            <div className="receipt-actions flex w-full max-w-[80mm] flex-col gap-2">
+              <button
+                onClick={() => window.print()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-500"
+              >
+                <Printer className="h-4 w-4" />
+                Print 80 mm Receipt
+              </button>
+              <button
+                onClick={() => {
+                  setCart([]);
+                  setCardLastFour('');
+                  setCashReceived('');
+                  setWalletReference('');
+                  setDeliveryApp('');
+                  setOtherDeliveryApp('');
+                  setDeliveryOrderNumber('');
+                  setModalType(null);
+                }}
+                className="w-full rounded-xl bg-slate-800 py-2.5 text-xs font-bold text-slate-200 transition-colors hover:bg-slate-700"
+              >
+                Start New Order
+              </button>
+            </div>
           </div>
         </div>
       )}
