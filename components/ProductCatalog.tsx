@@ -91,7 +91,7 @@ export default function ProductCatalog({
         <span className="text-xs text-slate-500 font-medium">{products.length} products available</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+      <div className="flex-1 overflow-y-auto hide-scrollbar p-2">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[12px] pb-[24px]">
           {products.map((product) => {
             const isOutOfStock = product.stock <= 0;
