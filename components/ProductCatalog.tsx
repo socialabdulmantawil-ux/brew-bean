@@ -1,42 +1,63 @@
+import { useEffect, useRef } from "react";
 import {
   Check,
-  Coffee,
   Cookie,
+  Coffee,
   CupSoda,
   Search,
   SlidersHorizontal,
   Sparkles,
   Utensils,
-  X
-} from 'lucide-react';
-import type { Product } from '../types';
-import ProductCard from './ProductCard';
+  X,
+} from "lucide-react";
+import type { Product } from "../types";
 
 interface ProductCatalogProps {
   products: Product[];
+  availableStockByProduct: Record<string, number>;
+  categories: string[];
   selectedCategory: string;
-  onSelectCategory: (category: string) => void;
+  onCategoryChange: (category: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAddToCart: (product: Product) => void;
+  onSetQuantity: (product: Product) => void;
+  formatCurrency: (amount: number) => string;
 }
 
-const categories = [
-  { id: 'All Items', icon: Sparkles },
-  { id: 'Coffee', icon: Coffee },
-  { id: 'Drinks', icon: CupSoda },
-  { id: 'Bakery', icon: Cookie },
-  { id: 'Meals', icon: Utensils }
-];
+const categoryIcons = {
+  Coffee,
+  Drinks: CupSoda,
+  Bakery: Cookie,
+  Meals: Utensils,
+} as const;
 
 export default function ProductCatalog({
   products,
+  availableStockByProduct,
+  categories,
   selectedCategory,
-  onSelectCategory,
+  onCategoryChange,
   searchQuery,
   onSearchChange,
-  onAddToCart
+  onAddToCart,
+  onSetQuantity,
+  formatCurrency,
 }: ProductCatalogProps) {
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggered = useRef(false);
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    pointerStart.current = null;
+  };
+
+  useEffect(() => clearLongPressTimer, []);
+
   return (
     <div className="flex-1 flex flex-col min-h-[70vh] md:h-full bg-[#0b101d] overflow-hidden p-3 sm:p-4 space-y-4">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
@@ -51,8 +72,9 @@ export default function ProductCatalog({
           />
           {searchQuery && (
             <button
-              onClick={() => onSearchChange('')}
+              onClick={() => onSearchChange("")}
               className="absolute right-3 top-3 text-slate-400 hover:text-white"
+              aria-label="Clear product search"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -65,36 +87,124 @@ export default function ProductCatalog({
       </div>
 
       <div className="flex items-center space-x-2 overflow-x-auto pb-1 custom-scrollbar shrink-0">
-        {categories.map((category) => {
-          const CategoryIcon = category.icon;
-          const isActive = selectedCategory === category.id;
+        {["All Items", ...categories].map((category) => {
+          const CategoryIcon = categoryIcons[category as keyof typeof categoryIcons] || Sparkles;
+          const isActive = selectedCategory === category;
           return (
             <button
-              key={category.id}
-              onClick={() => onSelectCategory(category.id)}
+              key={category}
+              onClick={() => onCategoryChange(category)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'bg-[#131b2e] text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800/80'
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                  : "bg-[#131b2e] text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800/80"
               }`}
             >
               <CategoryIcon className="w-3.5 h-3.5" />
-              <span>{category.id}</span>
+              <span>{category}</span>
             </button>
           );
         })}
       </div>
 
       <div className="flex items-center justify-between shrink-0">
-        <h2 className="text-sm font-bold text-slate-200 tracking-wide">{selectedCategory}</h2>
-        <span className="text-xs text-slate-500 font-medium">{products.length} products available</span>
+        <h2 className="text-sm font-bold text-slate-200 tracking-wide">
+          {selectedCategory}
+        </h2>
+        <span className="text-xs text-slate-500 font-medium">
+          {products.length} products available
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 pb-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} onAdd={onAddToCart} />
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pb-6">
+          {products.map((product) => {
+            const availableStock = availableStockByProduct[product.id] ?? product.stock;
+            const isOutOfStock = availableStock === 0;
+            return (
+            <button
+              type="button"
+              key={product.id}
+              disabled={isOutOfStock}
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                longPressTriggered.current = false;
+                clearLongPressTimer();
+                pointerStart.current = { x: event.clientX, y: event.clientY };
+                event.currentTarget.setPointerCapture(event.pointerId);
+                longPressTimer.current = setTimeout(() => {
+                  longPressTriggered.current = true;
+                  longPressTimer.current = null;
+                  onSetQuantity(product);
+                }, 500);
+              }}
+              onPointerUp={(event) => {
+                clearLongPressTimer();
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                }
+              }}
+              onPointerLeave={clearLongPressTimer}
+              onPointerCancel={clearLongPressTimer}
+              onLostPointerCapture={clearLongPressTimer}
+              onPointerMove={(event) => {
+                const start = pointerStart.current;
+                if (
+                  start &&
+                  (Math.abs(event.clientX - start.x) > 10 || Math.abs(event.clientY - start.y) > 10)
+                ) {
+                  clearLongPressTimer();
+                }
+              }}
+              onContextMenu={(event) => event.preventDefault()}
+              onClick={() => {
+                if (longPressTriggered.current) {
+                  longPressTriggered.current = false;
+                  return;
+                }
+                onAddToCart(product);
+              }}
+              className={`touch-manipulation select-none bg-[#131b2e] border border-slate-800/80 rounded-2xl p-1 flex flex-col gap-2.5 transition-all group relative overflow-hidden text-left ${
+                isOutOfStock
+                  ? "cursor-not-allowed opacity-60 grayscale"
+                  : "cursor-pointer hover:border-blue-500/50 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-900/10"
+              }`}
+              aria-label={`${product.name}. ${availableStock} in stock. Tap to add to cart, or press and hold to set quantity.`}
+            >
+              {product.tag && (
+                <span
+                  className={`absolute top-2 right-2 ${product.tagColor || "bg-blue-600"} text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full z-10 shadow-md`}
+                >
+                  {product.tag}
+                </span>
+              )}
+
+              <div className="w-full h-32 rounded-xl overflow-hidden bg-slate-900 relative">
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xs font-bold text-slate-100 group-hover:text-blue-400 transition-colors truncate">
+                  {product.name}
+                </h3>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-extrabold text-blue-400">
+                    {formatCurrency(product.price)}
+                  </span>
+                  <span className="text-[10px] text-slate-400 flex items-center space-x-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOutOfStock ? "bg-red-500" : availableStock <= 5 ? "bg-amber-500" : "bg-emerald-500"}`}></span>
+                    <span>{isOutOfStock ? "Out of stock" : `${availableStock} in stock`}</span>
+                  </span>
+                </div>
+              </div>
+            </button>
+            );
+          })}
         </div>
       </div>
 
@@ -102,7 +212,7 @@ export default function ProductCatalog({
         <span>Prices in Philippine pesos (PHP)</span>
         <span className="text-emerald-500 font-medium flex items-center space-x-1">
           <Check className="w-3 h-3" />
-          <span>Fresh &amp; Quality Assured</span>
+          <span>Fresh & Quality Assured</span>
         </span>
       </div>
     </div>

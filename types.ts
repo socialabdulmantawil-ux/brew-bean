@@ -1,9 +1,3 @@
-export interface AddOn {
-  id: string;
-  name: string;
-  price: number;
-}
-
 export interface Product {
   id: string;
   name: string;
@@ -14,6 +8,19 @@ export interface Product {
   tagColor?: string;
   image: string;
   defaultOptions: { size: string; addOns: string[] };
+}
+
+export interface AddOn {
+  id: string;
+  name: string;
+  price: number;
+  category?: string;
+}
+
+export interface SizeOption {
+  id: string;
+  name: string;
+  adjustment: number;
 }
 
 export interface CartItem {
@@ -41,8 +48,13 @@ export type ModalType =
   | 'CHECKOUT_SUCCESS'
   | null;
 
-export interface SizeOption {
-  id: string;
-  name: string;
-  adjustment: number;
+export interface SwipeStart {
+  cartItemId: string;
+  x: number;
+  offset: number;
+}
+
+export interface SwipingItem {
+  cartItemId: string;
+  offset: number;
 }
