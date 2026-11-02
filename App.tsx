@@ -781,7 +781,7 @@ export default function App() {
                   placeholder="Specify delivery app"
                   className="w-full rounded-xl border border-slate-700/80 bg-[#1e293b]/70 p-3 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
                 />
-              </label>
+              ))
             )}
 
             <label className="block space-y-1.5">
@@ -819,8 +819,6 @@ export default function App() {
               </div>
             )}
           </div>
-        </div>
-      )}
 
       {/* QUICK QUANTITY MODAL */}
       {modalType === 'QUANTITY' && (activeCartItem || quantityProduct) && (
@@ -998,7 +996,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
 
       {/* ADD ONS MODAL */}
       {modalType === 'ADDONS' && activeCartItem &&
@@ -1486,6 +1483,45 @@ export default function App() {
         </div>
       )}
 
+      <OrderModals
+        modalType={modalType}
+        setModalType={setModalType}
+        deliveryApp={deliveryApp}
+        setDeliveryApp={setDeliveryApp}
+        otherDeliveryApp={otherDeliveryApp}
+        setOtherDeliveryApp={setOtherDeliveryApp}
+        deliveryOrderNumber={deliveryOrderNumber}
+        setDeliveryOrderNumber={setDeliveryOrderNumber}
+        deliveryDetailsValid={deliveryDetailsValid}
+        activeCartItem={activeCartItem}
+        setActiveCartItem={setActiveCartItem}
+        quantityInput={quantityInput}
+        setQuantityInput={setQuantityInput}
+        saveQuantity={saveQuantity}
+        saveItemChanges={saveItemChanges}
+        sizeOptions={SIZE_OPTIONS}
+        addOnOptions={ADD_ON_OPTIONS}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        subtotal={subtotal}
+        promoActive={promoActive}
+        discountAmount={discountAmount}
+        taxAmount={taxAmount}
+        totalAmount={totalAmount}
+        cardLastFour={cardLastFour}
+        setCardLastFour={setCardLastFour}
+        cashReceived={cashReceived}
+        setCashReceived={setCashReceived}
+        cashReceivedAmount={cashReceivedAmount}
+        walletReference={walletReference}
+        setWalletReference={setWalletReference}
+        paymentDetailsValid={paymentDetailsValid}
+        orderType={orderType}
+        deliveryAppName={deliveryAppName}
+        cart={cart}
+        setCart={setCart}
+        currentTime={currentTime}
+      />
     </div>
   );
 }
